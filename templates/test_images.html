@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>图片显示测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .artifact { margin: 20px 0; padding: 10px; border: 1px solid #ccc; }
+        img { max-width: 300px; max-height: 250px; }
+    </style>
+</head>
+<body>
+    <h1>图片显示测试 - 直接使用文件路径</h1>
+    <p>这个页面直接使用文件路径来显示图片，绕过Django模板的复杂逻辑。</p>
+    
+    <h2>前5个文物的图片显示：</h2>
+
+    <div class="artifact">
+        <h3>史密森尼博物馆藏品 #1309</h3>
+        <img src="/static/paintings/Smithsonian/Smithsonian-1/Smithsonian-1/smithsonian_0.jpg" alt="史密森尼博物馆藏品 #1309">
+        <p>图片路径: static/paintings/Smithsonian/Smithsonian-1/Smithsonian-1/smithsonian_0.jpg</p>
+    </div>
+
+    <div class="artifact">
+        <h3>史密森尼博物馆藏品 #1308</h3>
+        <img src="/static/paintings/Smithsonian/Smithsonian-1/Smithsonian-1/smithsonian_1.jpg" alt="史密森尼博物馆藏品 #1308">
+        <p>图片路径: static/paintings/Smithsonian/Smithsonian-1/Smithsonian-1/smithsonian_1.jpg</p>
+    </div>
+
+    <div class="artifact">
+        <h3>史密森尼博物馆藏品 #1307</h3>
+        <img src="/static/paintings/Smithsonian/Smithsonian-1/Smithsonian-1/smithsonian_2.jpg" alt="史密森尼博物馆藏品 #1307">
+        <p>图片路径: static/paintings/Smithsonian/Smithsonian-1/Smithsonian-1/smithsonian_2.jpg</p>
+    </div>
+
+    <div class="artifact">
+        <h3>史密森尼博物馆藏品 #1306</h3>
+        <img src="/static/paintings/Smithsonian/Smithsonian-1/Smithsonian-1/smithsonian_3.jpg" alt="史密森尼博物馆藏品 #1306">
+        <p>图片路径: static/paintings/Smithsonian/Smithsonian-1/Smithsonian-1/smithsonian_3.jpg</p>
+    </div>
+
+    <div class="artifact">
+        <h3>史密森尼博物馆藏品 #1305</h3>
+        <img src="/static/paintings/Smithsonian/Smithsonian-1/Smithsonian-1/smithsonian_4.jpg" alt="史密森尼博物馆藏品 #1305">
+        <p>图片路径: static/paintings/Smithsonian/Smithsonian-1/Smithsonian-1/smithsonian_4.jpg</p>
+    </div>
+
+    <hr>
+    <p>如果这个页面能显示图片，说明问题在于Django模板的条件判断逻辑。</p>
+    <p>如果这个页面也不能显示图片，说明有其他问题。</p>
+</body>
+</html>

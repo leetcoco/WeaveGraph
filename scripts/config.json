@@ -1,0 +1,13 @@
+{
+  "image_size": 256,
+  "artifact_size": [256, 256],
+  "garment_size": [256, 256],
+  "batch_size": 8,
+  "epochs": 100,
+  "learning_rate": 0.001,
+  "train_test_split": 0.8,
+  "latent_dim": 512,
+  "content_loss_weight": 10.0,
+  "style_loss_weight": 1.0,
+  "consistency_loss_weight": 5.0
+}

@@ -1,0 +1,3498 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_head %}
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+{% endblock %}
+
+{% block title %}传统画作服装设计 - V8精确边界控制版{% endblock %}
+
+{% block extra_css %}
+<style>
+    .design-container {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+
+    .design-container-top {
+        display: flex;
+        flex-direction: column;
+    }
+
+    @media (min-width: 768px) {
+        .design-container-top {
+            height: 520px;
+        }
+    }
+
+    .design-title {
+        color: var(--primary-color);
+        font-weight: bold;
+        margin-bottom: 10px;
+        border-bottom: 2px solid var(--secondary-color);
+        padding-bottom: 5px;
+    }
+
+    .artifact-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(80px, 1fr));
+        grid-auto-rows: 70px;
+        gap: 6px;
+        max-height: 420px; /* 6行 × 70px */
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    .artifact-card {
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: all 0.3s;
+        background: white;
+    }
+
+    .artifact-card:hover {
+        border-color: #8B0000;
+        transform: scale(1.03);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .artifact-card.selected {
+        border-color: #8B0000;
+        box-shadow: 0 0 15px rgba(139, 0, 0, 0.4);
+    }
+
+    .artifact-card img {
+        width: 100%;
+        height: 55px;
+        object-fit: contain;
+    }
+
+    .artifact-info {
+        padding: 3px;
+    }
+
+    .artifact-name {
+        font-size: 11px;
+        font-weight: bold;
+        margin-bottom: 5px;
+        color: #333;
+    }
+
+    .artifact-colors {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+    }
+
+    .color-dot {
+        display: none; /* 隐藏颜色节点 */
+    }
+
+    .design-preview {
+        width: 100%;
+        height: 460px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        background: white;
+        position: relative;
+    }
+
+    .model-3d {
+        width: 100%;
+        height: 460px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        position: relative;
+    }
+
+    .gender-tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+
+    .gender-tab {
+        padding: 10px 30px;
+        border: 2px solid #ddd;
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.3s;
+        background: white;
+        font-size: 16px;
+    }
+
+    .gender-tab.active {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+
+    .gender-tab:hover:not(.active) {
+        border-color: #8B0000;
+    }
+
+    .garment-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 6px;
+        margin-top: 10px;
+    }
+
+    .garment-card {
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        padding: 8px 4px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        background: white;
+    }
+
+    .garment-card:hover {
+        border-color: #8B0000;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .garment-card.selected {
+        border-color: #8B0000;
+        background-color: #FFF5F5;
+    }
+
+    .category-filter {
+        margin-bottom: 15px;
+    }
+
+    .category-btn {
+        padding: 8px 16px;
+        border: 2px solid #ddd;
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.3s;
+        background: white;
+        margin-right: 5px;
+        margin-bottom: 5px;
+    }
+
+    .category-btn.active {
+        background: #8B0000;
+        color: white;
+        border-color: #8B0000;
+    }
+
+    /* 响应式调整 */
+    @media (max-width: 768px) {
+        .artifact-grid {
+            grid-template-columns: repeat(2, minmax(100px, 1fr));
+        }
+    }
+    @media (max-width: 480px) {
+        .artifact-grid {
+            grid-template-columns: repeat(1, minmax(100px, 1fr));
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-5 mb-3">传统画作服装设计系统</h1>
+            <p class="lead">
+                基于复杂网络分析，将传统中国画作转化为现代服装设计。
+                选择一幅画作和服装，系统会自动生成设计方案。
+            </p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="design-container design-container-top">
+                <h3 class="design-title">1. 选择画作</h3>
+
+                <div class="category-filter">
+                    <label for="category-select" style="font-weight: bold; margin-right: 10px;">选择系列：</label>
+                    <select id="category-select" onchange="filterArtifacts(this.value)" style="padding: 8px 12px; border: 2px solid #ddd; border-radius: 20px; background: white; font-size: 14px;">
+                        <option value="all" {% if current_category == 'all' %}selected{% endif %}>全部系列</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if current_category == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div id="artifact-grid" class="artifact-grid">
+                    {% for artifact in artifacts %}
+                    <div class="artifact-card" data-id="{{ artifact.id }}" data-category-id="{{ artifact.category_id|default:'1' }}" onclick="selectArtifact({{ artifact.id }})">
+                        {% if artifact.image %}
+                        <img src="{{ artifact.image }}" alt="{{ artifact.name }}" loading="lazy" decoding="async" onerror="this.src='{{ artifact.external_image }}';">
+                        {% elif artifact.external_image %}
+                        <img src="{{ artifact.external_image }}" alt="{{ artifact.name }}" loading="lazy" decoding="async">
+                        {% else %}
+                        <img src="https://via.placeholder.com/120x100/F5F5DC/333333?text=画作" alt="{{ artifact.name }}">
+                        {% endif %}
+                        <div class="artifact-info">
+                            <div class="artifact-name">{{ artifact.name|truncatechars:12 }}</div>
+                            <div class="artifact-colors" id="colors-{{ artifact.id }}">
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% if page_obj %}
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px;">
+                    <div style="font-size:12px; color:#666;">
+                        第 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 页 · 本页 {{ page_obj.object_list|length }} 条
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        {% if page_obj.has_previous %}
+                        <a class="btn btn-sm btn-outline-secondary" href="?category={{ current_category }}&page={{ page_obj.previous_page_number }}">上一页</a>
+                        {% else %}
+                        <button class="btn btn-sm btn-outline-secondary" disabled>上一页</button>
+                        {% endif %}
+                        {% if page_obj.has_next %}
+                        <a class="btn btn-sm btn-outline-secondary" href="?category={{ current_category }}&page={{ page_obj.next_page_number }}">下一页</a>
+                        {% else %}
+                        <button class="btn btn-sm btn-outline-secondary" disabled>下一页</button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                
+
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="design-container design-container-top">
+                <h3 class="design-title">2. 选择服装样式</h3>
+
+                <div class="gender-tabs">
+                    <button id="gender-male" class="gender-tab" onclick="switchGender('male')">
+                        男
+                    </button>
+                    <button id="gender-female" class="gender-tab active" onclick="switchGender('female')">
+                        女
+                    </button>
+                </div>
+
+                <div class="background-color-picker mb-3">
+                    <div class="color-picker-label" style="font-weight: bold; margin-bottom: 8px;">选择服装背景色：</div>
+                    <div class="color-options" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <div class="color-option" style="width: 30px; height: 30px; border-radius: 50%; background: #FFFFFF; border: 2px solid #ddd; cursor: pointer;" onclick="selectBackgroundColor('#FFFFFF')" title="白色"></div>
+                        <div class="color-option" style="width: 30px; height: 30px; border-radius: 50%; background: #F5F5DC; border: 2px solid #ddd; cursor: pointer;" onclick="selectBackgroundColor('#F5F5DC')" title="米白"></div>
+                        <div class="color-option" style="width: 30px; height: 30px; border-radius: 50%; background: #FFF5F5; border: 2px solid #ddd; cursor: pointer;" onclick="selectBackgroundColor('#FFF5F5')" title="淡粉"></div>
+                        <div class="color-option" style="width: 30px; height: 30px; border-radius: 50%; background: #F5F5F5; border: 2px solid #ddd; cursor: pointer;" onclick="selectBackgroundColor('#F5F5F5')" title="浅灰"></div>
+                        <div class="color-option" style="width: 30px; height: 30px; border-radius: 50%; background: #E8F5E8; border: 2px solid #ddd; cursor: pointer;" onclick="selectBackgroundColor('#E8F5E8')" title="淡绿"></div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <label style="font-size: 14px;">自定义颜色：</label>
+                        <input type="color" id="custom-color-picker" value="#FFFFFF" onchange="selectBackgroundColor(this.value)" style="width: 50px; height: 30px;">
+                        <span id="selected-color-hex" style="font-size: 14px; color: #666;">#FFFFFF</span>
+                    </div>
+                </div>
+
+                <div id="garment-grid" class="garment-grid">
+                    <p class="text-muted">请先选择性别</p>
+                </div>
+                
+
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="design-container">
+                <h3 class="design-title">3. 设计预览</h3>
+                <canvas id="design-canvas" class="design-preview"></canvas>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="design-container">
+                <h3 class="design-title">4. 三维模特试穿</h3>
+                <div id="model-3d" class="model-3d">
+                    <!-- Three.js canvas 将在此处动态添加 -->
+                </div>
+                
+
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- Three.js for 3D rendering -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+{{ artifacts|json_script:"artifacts-data" }}
+<script>
+    let selectedArtifact = null;
+    let selectedArtifactImage = null; // 存储加载的画作图片对象
+    let selectedArtifactFocusX = 0.5; // 画作主体在水平方向上的相对位置（0~1）
+    let selectedArtifactSubjectLeft = 0.2;
+    let selectedArtifactSubjectRight = 0.8;
+    let selectedGender = 'female'; // 默认女性
+    let selectedGarmentType = null;
+    let selectedBackgroundColor = '#FFFFFF'; // 默认白色背景
+    const garmentImageCache = new Map();
+    const garmentMaskCache = new Map();
+    let previewRenderToken = 0;
+    const dummyArtifactImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4////fwAJ+wP9K7xLxQAAAABJRU5ErkJggg==';
+
+    // 服装数据 - 使用数据库中的真实ID和名称
+    const maleGarments = [
+        {id: 13, name: '交领短袄（汉）', description: '传统交领短袄，汉服风格', image: '/static/downloads/交领短袄（汉）.png'},
+        {id: 14, name: 'T恤', description: '简约圆领T恤，休闲舒适', image: '/static/downloads/T恤.png'},
+        {id: 15, name: 'POLO衫', description: '经典Polo衫，简约时尚', image: '/static/downloads/polo衫.png'},
+        {id: 16, name: '宋褙子（男）', description: '传统宋褙子，男士款式', image: '/static/downloads/宋褙子（男）.png'}
+    ];
+    const femaleGarments = [
+        {id: 13, name: '交领短袄（汉）', description: '传统交领短袄，汉服风格', image: '/static/downloads/交领短袄（汉）.png'},
+        {id: 14, name: 'T恤', description: '简约圆领T恤，休闲舒适', image: '/static/downloads/T恤.png'},
+        {id: 15, name: 'POLO衫', description: '经典Polo衫，简约时尚', image: '/static/downloads/polo衫.png'},
+        {id: 20, name: '马面裙', description: '传统马面裙，优雅飘逸', image: '/static/downloads/马面裙.png'},
+        {id: 21, name: '旗袍', description: '经典旗袍，修身剪裁', image: '/static/downloads/旗袍.png'},
+        {id: 22, name: '宋褙子（女）', description: '传统宋褙子，女士款式', image: '/static/downloads/宋褙子（女）.png'}
+    ];
+
+    // 使用从后端传递的当前页文物数据
+    let allArtifacts = [];
+    try {
+        const artifactsDataEl = document.getElementById('artifacts-data');
+        if (artifactsDataEl && artifactsDataEl.textContent) {
+            allArtifacts = JSON.parse(artifactsDataEl.textContent) || [];
+        }
+    } catch (e) {
+        console.error('画作数据解析失败:', e);
+        allArtifacts = [];
+    }
+
+    // 全局变量
+    let allArtifactsData = [];
+
+    async function fetchGarmentCoverageV8(garmentSrc) {
+        // 简化版：返回一个基于服装类型的估算覆盖率
+        // 真实覆盖率计算需要在后端支持
+        const garmentMap = {
+            '旗袍': 85,
+            '马面裙': 75,
+            'T恤': 70,
+            'POLO衫': 70,
+            '交领短袄': 80,
+            '宋褙子': 80
+        };
+        
+        for (const [name, coverage] of Object.entries(garmentMap)) {
+            if (garmentSrc.includes(name)) {
+                return coverage;
+            }
+        }
+        return 75; // 默认覆盖率
+    }
+
+    function getGarmentImage(src) {
+        if (garmentImageCache.has(src)) {
+            const cached = garmentImageCache.get(src);
+            if (cached.complete && cached.naturalWidth > 0) {
+                return Promise.resolve(cached);
+            }
+            return new Promise((resolve, reject) => {
+                cached.onload = () => resolve(cached);
+                cached.onerror = () => reject(new Error('load failed'));
+            });
+        }
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        garmentImageCache.set(src, img);
+        return new Promise((resolve, reject) => {
+            img.onload = () => resolve(img);
+            img.onerror = () => reject(new Error('load failed'));
+            img.src = src;
+        });
+    }
+
+    function getGarmentMaskForImage(img, src) {
+        if (garmentMaskCache.has(src)) {
+            return garmentMaskCache.get(src);
+        }
+        const garmentCanvas = document.createElement('canvas');
+        garmentCanvas.width = 256;
+        garmentCanvas.height = 256;
+        const garmentCtx = garmentCanvas.getContext('2d');
+        garmentCtx.drawImage(img, 0, 0, 256, 256);
+        const garmentImageData = garmentCtx.getImageData(0, 0, 256, 256);
+        const mask = createGarmentMaskV8(garmentImageData, 256, 256);
+        let maskCoverage = 0;
+        for (let i = 0; i < mask.length; i++) {
+            if (mask[i] > 38) maskCoverage++;
+        }
+        const coveragePercent = (maskCoverage / mask.length * 100).toFixed(1);
+        const payload = { mask, maskCoverage, coveragePercent };
+        garmentMaskCache.set(src, payload);
+        return payload;
+    }
+    
+    // 绘制服装缩略图 - 清晰的服装轮廓
+    function drawGarmentThumbnail(ctx, garmentId, gender, backgroundColor) {
+        const width = ctx.canvas.width;
+        const height = ctx.canvas.height;
+        const centerX = width / 2;
+        const centerY = height / 2;
+        
+        // 清空画布并设置背景
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = backgroundColor;
+        ctx.fillRect(0, 0, width, height);
+        
+        ctx.strokeStyle = '#2C3E50';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        ctx.beginPath();
+        
+        if (gender === 'male') {
+            switch(parseInt(garmentId)) {
+                case 1: // T恤 - 圆领短袖
+                    // 领口 - 凹进去的圆弧
+                    ctx.moveTo(centerX - 18, centerY - 32);
+                    ctx.quadraticCurveTo(centerX, centerY - 24, centerX + 18, centerY - 32);
+                    // 右肩
+                    ctx.lineTo(centerX + 22, centerY - 28);
+                    // 右袖 - 短袖
+                    ctx.lineTo(centerX + 38, centerY - 25);
+                    ctx.lineTo(centerX + 38, centerY - 10);
+                    ctx.lineTo(centerX + 22, centerY - 12);
+                    // 右侧身体
+                    ctx.lineTo(centerX + 20, centerY + 30);
+                    // 底部
+                    ctx.lineTo(centerX - 20, centerY + 30);
+                    // 左侧身体
+                    ctx.lineTo(centerX - 22, centerY - 12);
+                    // 左袖 - 短袖
+                    ctx.lineTo(centerX - 38, centerY - 10);
+                    ctx.lineTo(centerX - 38, centerY - 25);
+                    ctx.lineTo(centerX - 22, centerY - 28);
+                    // 左肩
+                    ctx.lineTo(centerX - 18, centerY - 32);
+                    ctx.closePath();
+                    break;
+
+                case 2: // 中式长衫 - 经典中式长衫
+                    // 立领 - 明显的小立领
+                    ctx.moveTo(centerX - 8, centerY - 38);
+                    ctx.lineTo(centerX + 8, centerY - 38);
+                    ctx.lineTo(centerX + 6, centerY - 30);
+                    ctx.lineTo(centerX - 6, centerY - 30);
+                    ctx.closePath();
+
+                    // 领口下方的衣服主体 - 更长的衣身
+                    ctx.moveTo(centerX - 15, centerY - 30);
+                    ctx.lineTo(centerX + 15, centerY - 30);
+                    // 右侧身体轮廓
+                    ctx.lineTo(centerX + 18, centerY - 20);
+                    ctx.lineTo(centerX + 22, centerY + 5);
+                    ctx.lineTo(centerX + 18, centerY + 25);
+                    ctx.lineTo(centerX + 22, centerY + 38);
+                    // 底部 - 稍微展开的底摆，更长
+                    ctx.lineTo(centerX - 22, centerY + 38);
+                    // 左侧身体轮廓
+                    ctx.lineTo(centerX - 18, centerY + 25);
+                    ctx.lineTo(centerX - 22, centerY + 5);
+                    ctx.lineTo(centerX - 18, centerY - 20);
+                    ctx.lineTo(centerX - 15, centerY - 30);
+                    ctx.closePath();
+
+                    // 右袖 - 较长的袖子
+                    ctx.moveTo(centerX + 18, centerY - 15);
+                    ctx.lineTo(centerX + 38, centerY - 15);
+                    ctx.lineTo(centerX + 38, centerY + 10);
+                    ctx.lineTo(centerX + 20, centerY + 10);
+                    ctx.closePath();
+
+                    // 左袖
+                    ctx.moveTo(centerX - 18, centerY - 15);
+                    ctx.lineTo(centerX - 38, centerY - 15);
+                    ctx.lineTo(centerX - 38, centerY + 10);
+                    ctx.lineTo(centerX - 20, centerY + 10);
+                    ctx.closePath();
+
+                    // 中线 - 立领下方开始
+                    ctx.moveTo(centerX, centerY - 30);
+                    ctx.lineTo(centerX, centerY + 38);
+
+                    // 盘扣 - 2个盘扣，更明显的装饰
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY - 8, 1.5, 0, Math.PI * 2);
+                    ctx.arc(centerX, centerY + 8, 1.5, 0, Math.PI * 2);
+                    ctx.stroke();
+                    break;
+                    
+                case 3: // 唐装外套 - 经典唐装
+                    // 领口
+                    ctx.moveTo(centerX - 18, centerY - 32);
+                    ctx.lineTo(centerX + 18, centerY - 32);
+                    // 右侧
+                    ctx.lineTo(centerX + 22, centerY - 22);
+                    ctx.lineTo(centerX + 28, centerY + 5);
+                    ctx.lineTo(centerX + 20, centerY + 35);
+                    ctx.lineTo(centerX + 25, centerY + 45);
+                    // 底部
+                    ctx.lineTo(centerX - 25, centerY + 45);
+                    // 左侧
+                    ctx.lineTo(centerX - 20, centerY + 35);
+                    ctx.lineTo(centerX - 28, centerY + 5);
+                    ctx.lineTo(centerX - 22, centerY - 22);
+                    ctx.lineTo(centerX - 18, centerY - 32);
+                    ctx.closePath();
+
+                    // 右袖
+                    ctx.moveTo(centerX + 22, centerY - 18);
+                    ctx.lineTo(centerX + 40, centerY - 18);
+                    ctx.lineTo(centerX + 40, centerY + 10);
+                    ctx.lineTo(centerX + 24, centerY + 10);
+                    ctx.closePath();
+
+                    // 左袖
+                    ctx.moveTo(centerX - 22, centerY - 18);
+                    ctx.lineTo(centerX - 40, centerY - 18);
+                    ctx.lineTo(centerX - 40, centerY + 10);
+                    ctx.lineTo(centerX - 24, centerY + 10);
+                    ctx.closePath();
+
+                    // 中线
+                    ctx.moveTo(centerX, centerY - 32);
+                    ctx.lineTo(centerX, centerY + 45);
+                    break;
+            }
+        } else {
+            switch(parseInt(garmentId)) {
+                case 4: // T恤 - 女款圆领短袖
+                    // 领口 - 凹进去的圆弧
+                    ctx.moveTo(centerX - 16, centerY - 32);
+                    ctx.quadraticCurveTo(centerX, centerY - 25, centerX + 16, centerY - 32);
+                    // 右肩
+                    ctx.lineTo(centerX + 20, centerY - 28);
+                    // 右袖 - 短袖
+                    ctx.lineTo(centerX + 35, centerY - 25);
+                    ctx.lineTo(centerX + 35, centerY - 10);
+                    ctx.lineTo(centerX + 20, centerY - 12);
+                    // 右侧身体 - 略修身
+                    ctx.lineTo(centerX + 18, centerY + 28);
+                    // 底部
+                    ctx.lineTo(centerX - 18, centerY + 28);
+                    // 左侧身体 - 略修身
+                    ctx.lineTo(centerX - 20, centerY - 12);
+                    // 左袖 - 短袖
+                    ctx.lineTo(centerX - 35, centerY - 10);
+                    ctx.lineTo(centerX - 35, centerY - 25);
+                    ctx.lineTo(centerX - 20, centerY - 28);
+                    // 左肩
+                    ctx.lineTo(centerX - 16, centerY - 32);
+                    ctx.closePath();
+                    break;
+
+                case 5: // 旗袍 - 经典旗袍
+                    // 领口
+                    ctx.moveTo(centerX - 10, centerY - 40);
+                    ctx.lineTo(centerX + 10, centerY - 40);
+                    // 右侧修身曲线
+                    ctx.lineTo(centerX + 12, centerY - 35);
+                    ctx.lineTo(centerX + 14, centerY - 20);
+                    ctx.lineTo(centerX + 12, centerY);
+                    ctx.lineTo(centerX + 10, centerY + 20);
+                    ctx.lineTo(centerX + 8, centerY + 40);
+                    ctx.lineTo(centerX + 6, centerY + 45);
+                    // 底部
+                    ctx.lineTo(centerX - 6, centerY + 45);
+                    // 左侧修身曲线
+                    ctx.lineTo(centerX - 8, centerY + 40);
+                    ctx.lineTo(centerX - 10, centerY + 20);
+                    ctx.lineTo(centerX - 12, centerY);
+                    ctx.lineTo(centerX - 14, centerY - 20);
+                    ctx.lineTo(centerX - 12, centerY - 35);
+                    ctx.lineTo(centerX - 10, centerY - 40);
+                    ctx.closePath();
+                    
+                    // 右肩带
+                    ctx.moveTo(centerX + 10, centerY - 38);
+                    ctx.lineTo(centerX + 12, centerY - 40);
+                    ctx.lineTo(centerX + 10, centerY - 30);
+                    
+                    // 左肩带
+                    ctx.moveTo(centerX - 10, centerY - 38);
+                    ctx.lineTo(centerX - 12, centerY - 40);
+                    ctx.lineTo(centerX - 10, centerY - 30);
+                    
+                    // 中线
+                    ctx.moveTo(centerX, centerY - 40);
+                    ctx.lineTo(centerX, centerY + 20);
+                    break;
+                    
+                case 6: // 汉服上衣 - 宽袖设计
+                    // 领口V形 - 更深的V形
+                    ctx.moveTo(centerX - 15, centerY - 35);
+                    ctx.lineTo(centerX, centerY - 18);
+                    ctx.lineTo(centerX + 15, centerY - 35);
+                    // 右侧
+                    ctx.lineTo(centerX + 18, centerY - 25);
+                    ctx.lineTo(centerX + 20, centerY - 8);
+                    ctx.lineTo(centerX + 15, centerY + 18);
+                    ctx.lineTo(centerX + 12, centerY + 35);
+                    // 底部
+                    ctx.lineTo(centerX - 12, centerY + 35);
+                    // 左侧
+                    ctx.lineTo(centerX - 15, centerY + 18);
+                    ctx.lineTo(centerX - 20, centerY - 8);
+                    ctx.lineTo(centerX - 18, centerY - 25);
+                    ctx.lineTo(centerX - 15, centerY - 35);
+                    ctx.closePath();
+
+                    // 右宽袖 - 更宽更明显的袖子
+                    ctx.moveTo(centerX + 18, centerY - 20);
+                    ctx.lineTo(centerX + 40, centerY - 20);
+                    ctx.lineTo(centerX + 40, centerY + 10);
+                    ctx.lineTo(centerX + 18, centerY + 5);
+                    ctx.closePath();
+
+                    // 左宽袖
+                    ctx.moveTo(centerX - 18, centerY - 20);
+                    ctx.lineTo(centerX - 40, centerY - 20);
+                    ctx.lineTo(centerX - 40, centerY + 10);
+                    ctx.lineTo(centerX - 18, centerY + 5);
+                    ctx.closePath();
+
+                    // 交领的装饰线 - V形领口内侧
+                    ctx.moveTo(centerX - 10, centerY - 30);
+                    ctx.lineTo(centerX, centerY - 18);
+                    ctx.lineTo(centerX + 10, centerY - 30);
+                    break;
+                    
+                case 7: // 汉服裙装 - 上衣+大裙摆
+                    // 上衣领口
+                    ctx.moveTo(centerX - 10, centerY - 38);
+                    ctx.lineTo(centerX + 10, centerY - 38);
+                    // 右侧
+                    ctx.lineTo(centerX + 12, centerY - 28);
+                    ctx.lineTo(centerX + 15, centerY - 10);
+                    ctx.lineTo(centerX + 10, centerY + 10);
+                    ctx.lineTo(centerX + 8, centerY + 20);
+                    // 底部
+                    ctx.lineTo(centerX - 8, centerY + 20);
+                    // 左侧
+                    ctx.lineTo(centerX - 10, centerY + 10);
+                    ctx.lineTo(centerX - 15, centerY - 10);
+                    ctx.lineTo(centerX - 12, centerY - 28);
+                    ctx.lineTo(centerX - 10, centerY - 38);
+                    ctx.closePath();
+                    
+                    // 右袖
+                    ctx.moveTo(centerX + 12, centerY - 25);
+                    ctx.lineTo(centerX + 30, centerY - 25);
+                    ctx.lineTo(centerX + 30, centerY - 8);
+                    ctx.lineTo(centerX + 14, centerY - 8);
+                    ctx.closePath();
+                    
+                    // 左袖
+                    ctx.moveTo(centerX - 12, centerY - 25);
+                    ctx.lineTo(centerX - 30, centerY - 25);
+                    ctx.lineTo(centerX - 30, centerY - 8);
+                    ctx.lineTo(centerX - 14, centerY - 8);
+                    ctx.closePath();
+                    
+                    // 裙摆 - 多层波浪形
+                    // 第一层
+                    ctx.moveTo(centerX - 28, centerY + 20);
+                    ctx.quadraticCurveTo(centerX - 35, centerY + 32, centerX - 28, centerY + 36);
+                    ctx.lineTo(centerX + 28, centerY + 36);
+                    ctx.quadraticCurveTo(centerX + 35, centerY + 32, centerX + 28, centerY + 20);
+                    ctx.closePath();
+
+                    // 第二层
+                    ctx.moveTo(centerX - 22, centerY + 36);
+                    ctx.quadraticCurveTo(centerX - 28, centerY + 40, centerX - 22, centerY + 44);
+                    ctx.lineTo(centerX + 22, centerY + 44);
+                    ctx.quadraticCurveTo(centerX + 28, centerY + 40, centerX + 22, centerY + 36);
+                    ctx.closePath();
+
+                    // 第三层
+                    ctx.moveTo(centerX - 16, centerY + 44);
+                    ctx.quadraticCurveTo(centerX - 20, centerY + 46, centerX - 16, centerY + 48);
+                    ctx.lineTo(centerX + 16, centerY + 48);
+                    ctx.quadraticCurveTo(centerX + 20, centerY + 46, centerX + 16, centerY + 44);
+                    ctx.closePath();
+
+                    // 裙摆褶皱线
+                    ctx.moveTo(centerX - 10, centerY + 20);
+                    ctx.lineTo(centerX - 6, centerY + 48);
+                    ctx.moveTo(centerX, centerY + 20);
+                    ctx.lineTo(centerX, centerY + 48);
+                    ctx.moveTo(centerX + 10, centerY + 20);
+                    ctx.lineTo(centerX + 6, centerY + 48);
+                    break;
+                    
+                case 8: // 唐装裙套装 - 上衣+A字裙
+                    // 领口 - 小V形，无立领
+                    ctx.moveTo(centerX - 10, centerY - 30);
+                    ctx.lineTo(centerX, centerY - 22);
+                    ctx.lineTo(centerX + 10, centerY - 30);
+                    // 右侧
+                    ctx.lineTo(centerX + 14, centerY - 20);
+                    ctx.lineTo(centerX + 16, centerY - 8);
+                    ctx.lineTo(centerX + 12, centerY + 8);
+                    ctx.lineTo(centerX + 10, centerY + 12);
+                    // 底部 - 上衣结束
+                    ctx.lineTo(centerX - 10, centerY + 12);
+                    // 左侧
+                    ctx.lineTo(centerX - 12, centerY + 8);
+                    ctx.lineTo(centerX - 16, centerY - 8);
+                    ctx.lineTo(centerX - 14, centerY - 20);
+                    ctx.lineTo(centerX - 10, centerY - 30);
+                    ctx.closePath();
+
+                    // 右袖
+                    ctx.moveTo(centerX + 14, centerY - 18);
+                    ctx.lineTo(centerX + 30, centerY - 18);
+                    ctx.lineTo(centerX + 30, centerY + 2);
+                    ctx.lineTo(centerX + 16, centerY + 2);
+                    ctx.closePath();
+
+                    // 左袖
+                    ctx.moveTo(centerX - 14, centerY - 18);
+                    ctx.lineTo(centerX - 30, centerY - 18);
+                    ctx.lineTo(centerX - 30, centerY + 2);
+                    ctx.lineTo(centerX - 16, centerY + 2);
+                    ctx.closePath();
+
+                    // 明显的A字裙 - 上衣下方分开，带波浪裙摆
+                    ctx.moveTo(centerX - 24, centerY + 12);
+                    ctx.quadraticCurveTo(centerX - 30, centerY + 26, centerX - 24, centerY + 38);
+                    ctx.lineTo(centerX + 24, centerY + 38);
+                    ctx.quadraticCurveTo(centerX + 30, centerY + 26, centerX + 24, centerY + 12);
+                    ctx.closePath();
+
+                    // 裙摆第二层
+                    ctx.moveTo(centerX - 18, centerY + 38);
+                    ctx.quadraticCurveTo(centerX - 22, centerY + 44, centerX - 18, centerY + 50);
+                    ctx.lineTo(centerX + 18, centerY + 50);
+                    ctx.quadraticCurveTo(centerX + 22, centerY + 44, centerX + 18, centerY + 38);
+                    ctx.closePath();
+
+                    // 褶皱线
+                    ctx.moveTo(centerX - 8, centerY + 12);
+                    ctx.lineTo(centerX - 4, centerY + 50);
+                    ctx.moveTo(centerX + 8, centerY + 12);
+                    ctx.lineTo(centerX + 4, centerY + 50);
+                    break;
+            }
+        }
+        
+        ctx.stroke();
+    }
+    
+    // 初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        loadArtifactColors();
+        switchGender('female');
+        init3DModel();
+        
+        // 将Python传递的数据保存到全局变量
+        allArtifactsData = allArtifacts;
+        console.log('加载了', allArtifactsData.length, '件文物');
+    });
+
+    // 加载画作的调色板颜色
+    function loadArtifactColors() {
+        allArtifacts.forEach(artifact => {
+            const colorsDiv = document.getElementById(`colors-${artifact.id}`);
+            if (colorsDiv && artifact.color_palette) {
+                const palette = artifact.color_palette;
+                if (palette && Array.isArray(palette)) {
+                    const colors = palette.map(item => {
+                        if (typeof item === 'string') {
+                            return item;
+                        } else if (typeof item === 'object' && item.hex) {
+                            return item.hex;
+                        }
+                        return null;
+                    }).filter(c => c !== null).slice(0, 8); // 最多显示8个颜色
+
+                    colors.forEach(color => {
+                        const dot = document.createElement('div');
+                        dot.className = 'color-dot';
+                        dot.style.backgroundColor = color;
+                        dot.title = color;
+                        colorsDiv.appendChild(dot);
+                    });
+                }
+            }
+        });
+        console.log('已加载', allArtifacts.length, '幅画作的调色板');
+    }
+
+    // 选择背景色
+    function selectBackgroundColor(color) {
+        selectedBackgroundColor = color;
+        document.getElementById('selected-color-hex').textContent = color;
+        document.getElementById('custom-color-picker').value = color;
+        
+        // 更新服装卡片背景色
+        document.querySelectorAll('.garment-card').forEach(card => {
+            card.style.backgroundColor = color;
+        });
+        
+        // 更新设计预览
+        if (selectedGarmentType) {
+            updateDesignPreview();
+        }
+    }
+
+    // 筛选画作 - 改为页面重载以提高性能
+    function filterArtifacts(categoryId) {
+        // 构建新的URL参数
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.set('category', categoryId);
+        urlParams.delete('page'); // 重置分页到第一页
+        
+        // 重定向到新URL
+        window.location.search = urlParams.toString();
+    }
+
+    // 估算画作主体在水平方向上的位置（0~1）
+    function computeArtifactFocusX(image) {
+        try {
+            const sampleWidth = 120;
+            const sampleHeight = Math.max(60, Math.round(sampleWidth * image.height / image.width));
+
+            const canvas = document.createElement('canvas');
+            canvas.width = sampleWidth;
+            canvas.height = sampleHeight;
+            const ctx = canvas.getContext('2d');
+
+            ctx.drawImage(image, 0, 0, sampleWidth, sampleHeight);
+            const data = ctx.getImageData(0, 0, sampleWidth, sampleHeight).data;
+
+            const columnScore = new Array(sampleWidth).fill(0);
+
+            for (let x = 1; x < sampleWidth; x++) {
+                for (let y = 0; y < sampleHeight; y++) {
+                    const idx = (y * sampleWidth + x) * 4;
+                    const r = data[idx];
+                    const g = data[idx + 1];
+                    const b = data[idx + 2];
+                    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+                    const idxLeft = idx - 4;
+                    const r2 = data[idxLeft];
+                    const g2 = data[idxLeft + 1];
+                    const b2 = data[idxLeft + 2];
+                    const lum2 = 0.299 * r2 + 0.587 * g2 + 0.114 * b2;
+
+                    columnScore[x] += Math.abs(lum - lum2);
+                }
+            }
+
+            let maxScore = 0;
+            for (let i = 0; i < sampleWidth; i++) {
+                if (columnScore[i] > maxScore) maxScore = columnScore[i];
+            }
+            if (maxScore <= 0) {
+                return 0.5;
+            }
+
+            let total = 0;
+            let weighted = 0;
+            const threshold = maxScore * 0.3;
+            for (let x = 0; x < sampleWidth; x++) {
+                const s = Math.max(0, columnScore[x] - threshold);
+                total += s;
+                weighted += s * x;
+            }
+
+            if (total <= 0) {
+                return 0.5;
+            }
+
+            const focus = weighted / total;
+            return focus / (sampleWidth - 1);
+        } catch (e) {
+            console.error('计算画作主体位置失败:', e);
+            return 0.5;
+        }
+    }
+
+    // 选择画作
+    function selectArtifact(artifactId) {
+        console.log('选择画作, ID:', artifactId);
+        // 移除之前的选中
+        document.querySelectorAll('.artifact-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+
+        // 添加新的选中
+        const card = document.querySelector(`.artifact-card[data-id="${artifactId}"]`);
+        console.log('找到的卡片:', card);
+        if (card) {
+            card.classList.add('selected');
+        }
+
+        selectedArtifact = allArtifacts.find(a => String(a.id) === String(artifactId));
+        console.log('选中的画作:', selectedArtifact);
+
+        // 加载画作图片用于纹理映射
+        if (selectedArtifact) {
+            let imageUrl = '';
+            // 更加健壮的图片路径处理
+            const imgPath = selectedArtifact.image || '';
+            const extImgPath = selectedArtifact.external_image || '';
+            
+            if (imgPath.startsWith('http') || imgPath.startsWith('/')) {
+                imageUrl = imgPath;
+            } else if (imgPath) {
+                // 处理相对路径，确保不重复添加 static
+                const staticPrefix = '{% static "" %}';
+                imageUrl = staticPrefix + imgPath;
+            } else if (extImgPath) {
+                imageUrl = extImgPath;
+            }
+
+            console.log('处理后的图片URL:', imageUrl);
+
+            if (imageUrl) {
+                const img = new Image();
+                img.crossOrigin = "Anonymous";
+                img.onload = function() {
+                    console.log('画作图片加载成功:', imageUrl);
+                    selectedArtifactImage = img; // 只有加载成功才赋值
+                    selectedArtifactFocusX = computeArtifactFocusX(img);
+                    console.log('估算的主体位置X(0~1):', selectedArtifactFocusX);
+                    updateDesignPreview();
+                    update3DModel();
+                };
+                img.onerror = function() {
+                    console.error('画作图片加载失败:', imageUrl);
+                    selectedArtifactImage = null;
+                    updateDesignPreview(); // 失败也要重绘（回退到颜色）
+                    update3DModel();
+                };
+                img.src = imageUrl;
+            } else {
+                console.log('无有效图片URL');
+                selectedArtifactImage = null;
+                updateDesignPreview();
+                update3DModel();
+            }
+        } else {
+            selectedArtifactImage = null;
+            updateDesignPreview();
+            update3DModel();
+        }
+    }
+
+    // 切换性别
+    function switchGender(gender) {
+        console.log('[switchGender] 切换性别:', gender);
+        selectedGender = gender;
+
+        // 更新按钮状态
+        document.getElementById('gender-male').classList.remove('active');
+        document.getElementById('gender-female').classList.remove('active');
+        document.getElementById(`gender-${gender}`).classList.add('active');
+
+        // 加载对应的服装
+        const garments = gender === 'male' ? maleGarments : femaleGarments;
+        console.log('[switchGender] 当前性别服装列表:', garments);
+        const grid = document.getElementById('garment-grid');
+        grid.innerHTML = '';
+
+                garments.forEach(garment => {
+                    const card = document.createElement('div');
+                    card.className = 'garment-card';
+                    card.dataset.id = garment.id;
+                    
+                    // 创建唯一的onclick处理函数
+                    card.setAttribute('onclick', `selectGarment(${garment.id})`);
+                    
+                    // 创建图片预览
+                    const img = document.createElement('img');
+                    img.src = garment.image;
+                    img.alt = garment.name;
+                    img.style.width = '60px';
+                    img.style.height = '75px';
+                    img.style.objectFit = 'contain';
+                    img.style.borderRadius = '4px';
+                    img.style.marginBottom = '4px';
+                    img.style.backgroundColor = selectedBackgroundColor;
+                    
+                    card.appendChild(img);
+                    
+                    const nameDiv = document.createElement('div');
+                    nameDiv.style.fontWeight = 'bold';
+                    nameDiv.style.fontSize = '11px';
+                    nameDiv.textContent = garment.name;
+                    
+                    const descDiv = document.createElement('div');
+                    descDiv.style.fontSize = '9px';
+                    descDiv.style.color = '#666';
+                    descDiv.style.marginTop = '2px';
+                    descDiv.textContent = garment.description || '';
+                    
+                    const coverageDiv = document.createElement('div');
+                    coverageDiv.style.fontSize = '10px';
+                    coverageDiv.style.color = '#8B0000';
+                    coverageDiv.style.marginTop = '4px';
+                    coverageDiv.textContent = 'Mask: ...';
+                    fetchGarmentCoverageV8(garment.image)
+                        .then(cov => {
+                            coverageDiv.textContent = `Mask: ${cov}%`;
+                        })
+                        .catch(() => {
+                            coverageDiv.textContent = 'Mask: -';
+                        });
+
+                    card.appendChild(nameDiv);
+                    card.appendChild(descDiv);
+                    card.appendChild(coverageDiv);
+                    grid.appendChild(card);
+                    // 设置卡片背景色
+                    card.style.backgroundColor = selectedBackgroundColor;
+                });
+
+        selectedGarmentType = null;
+        console.log('[switchGender] 已将selectedGarmentType设置为null');
+        
+        // 自动选择第一个服装（白色基础版本）
+        if (garments.length > 0) {
+            console.log('[switchGender] 将在10ms后自动选择第一个服装, ID:', garments[0].id);
+            setTimeout(() => {
+                selectGarment(garments[0].id);
+            }, 10);
+        }
+    }
+
+    // 选择服装 - 修复款式切换问题
+    function selectGarment(garmentId) {
+        console.log('[selectGarment] 选择服装, ID:', garmentId);
+        
+        // 移除所有选中状态
+        document.querySelectorAll('.garment-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+
+        // 找到选中的服装
+        const garments = selectedGender === 'male' ? maleGarments : femaleGarments;
+        selectedGarmentType = garments.find(g => String(g.id) === String(garmentId));
+        console.log('[selectGarment] 选中的服装:', selectedGarmentType);
+        console.log('[selectGarment] 当前选中的画作:', selectedArtifact);
+        if (selectedGarmentType && selectedGarmentType.image) {
+            garmentMaskCache.delete(selectedGarmentType.image);
+        }
+
+        // 添加选中状态
+        const card = document.querySelector(`.garment-card[data-id="${garmentId}"]`);
+        if (card) {
+            card.classList.add('selected');
+            
+            // 立即更新预览 - 这是关键修复！
+            setTimeout(() => {
+                console.log('[selectGarment] 开始更新设计预览...');
+                updateDesignPreview();
+                update3DModel();
+            }, 100);
+        } else {
+            console.log('[selectGarment] 未找到服装卡片:', garmentId);
+        }
+    }
+
+    // 边缘检测函数 - 将图片转换为线条轮廓（保留原图质感）
+    function detectEdges(imageData, threshold) {
+        const data = imageData.data;
+        const width = imageData.width;
+        const height = imageData.height;
+        const output = new Uint8ClampedArray(data.length);
+
+        // Sobel算子
+        const sobelX = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
+        const sobelY = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
+
+        for (let y = 1; y < height - 1; y++) {
+            for (let x = 1; x < width - 1; x++) {
+                let gx = 0;
+                let gy = 0;
+
+                for (let ky = -1; ky <= 1; ky++) {
+                    for (let kx = -1; kx <= 1; kx++) {
+                        const idx = ((y + ky) * width + (x + kx)) * 4;
+                        const gray = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+                        const kidx = (ky + 1) * 3 + (kx + 1);
+                        gx += gray * sobelX[kidx];
+                        gy += gray * sobelY[kidx];
+                    }
+                }
+
+                const magnitude = Math.sqrt(gx * gx + gy * gy);
+                const outputIdx = (y * width + x) * 4;
+
+                // 边缘检测，只保留明显的边缘
+                if (magnitude > threshold) {
+                    // 使用原图的灰度值，保持原始线条质感
+                    const idx = (y * width + x) * 4;
+                    const originalGray = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+
+                    // 反转颜色：原图暗的部分（线条）变亮，原图亮的部分（背景）变暗
+                    const lineColor = 255 - originalGray;
+
+                    output[outputIdx] = lineColor;     // R
+                    output[outputIdx + 1] = lineColor; // G
+                    output[outputIdx + 2] = lineColor; // B
+                    output[outputIdx + 3] = 255; // 完全不透明
+                } else {
+                    output[outputIdx] = 255;   // 白色背景
+                    output[outputIdx + 1] = 255;
+                    output[outputIdx + 2] = 255;
+                    output[outputIdx + 3] = 0; // 完全透明
+                }
+            }
+        }
+
+        return new ImageData(output, width, height);
+    }
+
+    // 更新设计预览 - 使用AI边缘检测转换图片为线条
+    // ============ V8精确边界控制映射系统 ============
+    
+    // Canny边缘检测
+    function detectCanny(grayData, width, height, lowThreshold, highThreshold) {
+        const sobelX = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
+        const sobelY = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
+        
+        const gx = new Int32Array(width * height);
+        const gy = new Int32Array(width * height);
+        
+        for (let y = 1; y < height - 1; y++) {
+            for (let x = 1; x < width - 1; x++) {
+                let gxi = 0, gyi = 0;
+                
+                for (let ky = -1; ky <= 1; ky++) {
+                    for (let kx = -1; kx <= 1; kx++) {
+                        const idx = (y + ky) * width + (x + kx);
+                        gxi += grayData[idx] * sobelX[(ky + 1) * 3 + (kx + 1)];
+                        gyi += grayData[idx] * sobelY[(ky + 1) * 3 + (kx + 1)];
+                    }
+                }
+                
+                const idx = y * width + x;
+                gx[idx] = gxi;
+                gy[idx] = gyi;
+            }
+        }
+        
+        const magnitude = new Float32Array(width * height);
+        for (let i = 0; i < width * height; i++) {
+            magnitude[i] = Math.sqrt(gx[i] * gx[i] + gy[i] * gy[i]);
+        }
+        
+        const edges = new Uint8ClampedArray(width * height);
+        for (let i = 0; i < width * height; i++) {
+            edges[i] = magnitude[i] > highThreshold ? 255 : 0;
+        }
+        
+        return edges;
+    }
+    
+    // 轻微膨胀
+    function dilate(data, width, height, kernelSize, iterations) {
+        let result = new Uint8ClampedArray(data);
+        
+        for (let iter = 0; iter < iterations; iter++) {
+            const temp = new Uint8ClampedArray(result);
+            const offset = Math.floor(kernelSize / 2);
+            
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    let maxVal = 0;
+                    
+                    for (let ky = -offset; ky <= offset; ky++) {
+                        for (let kx = -offset; kx <= offset; kx++) {
+                            const nx = x + kx;
+                            const ny = y + ky;
+                            
+                            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                                const idx = ny * width + nx;
+                                maxVal = Math.max(maxVal, temp[idx]);
+                            }
+                        }
+                    }
+                    
+                    result[y * width + x] = maxVal;
+                }
+            }
+        }
+        
+        return result;
+    }
+    
+    // V8核心：极小羽化 - 3×3核，保持圆领等细节
+    function gaussianBlur3x3(data, width, height) {
+        const sigma = 0.5; // 极小模糊
+        const kernel = [
+            [0.239, 0.242, 0.239],
+            [0.242, 0.254, 0.242],
+            [0.239, 0.242, 0.239]
+        ];
+        const result = new Uint8ClampedArray(data.length);
+        
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                let sum = 0;
+                
+                for (let ky = -1; ky <= 1; ky++) {
+                    for (let kx = -1; kx <= 1; kx++) {
+                        const nx = x + kx;
+                        const ny = y + ky;
+                        
+                        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                            const idx = ny * width + nx;
+                            sum += data[idx] * kernel[ky + 1][kx + 1];
+                        }
+                    }
+                }
+                
+                result[y * width + x] = Math.round(sum);
+            }
+        }
+        
+        return result;
+    }
+    
+    // 查找简单轮廓
+    function findContours(binaryData, width, height) {
+        const contours = [];
+        const visited = new Uint8ClampedArray(width * height);
+        
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const idx = y * width + x;
+                if (binaryData[idx] > 128 && visited[idx] === 0) {
+                    const contour = traceContour(binaryData, visited, x, y, width, height);
+                    if (contour.length > 5) {
+                        contours.push(contour);
+                    }
+                }
+            }
+        }
+        
+        return contours;
+    }
+    
+    // 追踪轮廓
+    function traceContour(binaryData, visited, startX, startY, width, height) {
+        const contour = [];
+        const stack = [{x: startX, y: startY}];
+        
+        while (stack.length > 0) {
+            const point = stack.pop();
+            const idx = point.y * width + point.x;
+            
+            if (visited[idx] === 1) continue;
+            if (binaryData[idx] <= 128) continue;
+            
+            visited[idx] = 1;
+            contour.push({x: point.x, y: point.y});
+            
+            const neighbors = [
+                {x: point.x + 1, y: point.y},
+                {x: point.x - 1, y: point.y},
+                {x: point.x, y: point.y + 1},
+                {x: point.x, y: point.y - 1}
+            ];
+            
+            for (const n of neighbors) {
+                if (n.x >= 0 && n.x < width && n.y >= 0 && n.y < height) {
+                    stack.push(n);
+                }
+            }
+        }
+        
+        return contour;
+    }
+    
+    // 计算轮廓面积（使用Shoelace公式）
+    function calculateContourArea(contour) {
+        if (contour.length < 3) return 0;
+
+        let area = 0;
+        const n = contour.length;
+
+        for (let i = 0; i < n; i++) {
+            const j = (i + 1) % n;
+            area += contour[i].x * contour[j].y;
+            area -= contour[j].x * contour[i].y;
+        }
+
+        return Math.abs(area) / 2;
+    }
+
+    // 优化后的查找轮廓 - 使用Flood Fill返回连通区域的边界
+    function findContours(binaryData, width, height) {
+        const contours = [];
+        const visited = new Uint8ClampedArray(width * height);
+
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const idx = y * width + x;
+                if (binaryData[idx] > 128 && visited[idx] === 0) {
+                    // BFS/DFS遍历找到整个连通区域
+                    const region = [];
+                    const stack = [{x, y}];
+
+                    while (stack.length > 0) {
+                        const point = stack.pop();
+                        const pidx = point.y * width + point.x;
+
+                        if (visited[pidx]) continue;
+                        if (binaryData[pidx] <= 128) continue;
+
+                        visited[pidx] = 1;
+                        region.push(point);
+
+                        const neighbors = [
+                            {x: point.x + 1, y: point.y},
+                            {x: point.x - 1, y: point.y},
+                            {x: point.x, y: point.y + 1},
+                            {x: point.x, y: point.y - 1}
+                        ];
+
+                        for (const n of neighbors) {
+                            if (n.x >= 0 && n.x < width && n.y >= 0 && n.y < height) {
+                                const nidx = n.y * width + n.x;
+                                if (visited[nidx] === 0 && binaryData[nidx] > 128) {
+                                    stack.push(n);
+                                }
+                            }
+                        }
+                    }
+
+                    if (region.length > 100) {  // 只保留较大的区域
+                        contours.push(region);
+                    }
+                }
+            }
+        }
+
+        return contours;
+    }
+    
+    // V8核心：创建服装mask - 精确边界控制
+    function createGarmentMaskV8(imageData, width, height) {
+        console.log('=== createGarmentMaskV8开始 ===');
+        console.log('输入尺寸:', width, 'x', height, '像素数据长度:', imageData.data.length);
+        
+        // 1. 转换为灰度
+        const grayData = new Uint8ClampedArray(width * height);
+        console.log('灰度转换完成，数组长度:', grayData.length);
+        for (let i = 0; i < imageData.data.length; i += 4) {
+            const r = imageData.data[i];
+            const g = imageData.data[i + 1];
+            const b = imageData.data[i + 2];
+            grayData[i / 4] = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+        }
+        
+        // 2. Canny边缘检测
+        const edges = detectCanny(grayData, width, height, 50, 120);
+        
+        // 3. 轻微膨胀连接
+        const dilated = dilate(edges, width, height, 3, 1);
+        
+        // 4. 查找轮廓
+        const contours = findContours(dilated, width, height);
+        console.log('V8轮廓检测结果:', contours.length, '个轮廓');
+        
+        if (contours.length === 0) {
+            console.warn('V8警告: 未检测到任何轮廓，返回全白mask');
+            return new Uint8ClampedArray(width * height).fill(255);
+        }
+        
+        // 5. V8改进：只保留面积 > 最大面积40%的轮廓
+        const areas = contours.map(c => calculateContourArea(c));
+        const maxArea = Math.max(...areas);
+        const threshold = maxArea * 0.4;
+        
+        const validContours = contours
+            .filter((c, i) => areas[i] > threshold)
+            .sort((a, b) => calculateContourArea(b) - calculateContourArea(a))
+            .slice(0, 2); // 只保留前2个最大轮廓
+        
+        console.log('V8有效轮廓:', validContours.length, '个，最大面积:', maxArea, '阈值:', threshold);
+        
+        const edgeMask = new Uint8ClampedArray(width * height).fill(0);
+        
+        for (const contour of validContours) {
+            for (const point of contour) {
+                const idx = point.y * width + point.x;
+                edgeMask[idx] = 1;
+            }
+        }
+        
+        const outside = new Uint8ClampedArray(width * height).fill(0);
+        const stack = [];
+        
+        for (let x = 0; x < width; x++) {
+            const topIdx = x;
+            const bottomIdx = (height - 1) * width + x;
+            if (edgeMask[topIdx] === 0) {
+                outside[topIdx] = 1;
+                stack.push({x, y: 0});
+            }
+            if (edgeMask[bottomIdx] === 0) {
+                outside[bottomIdx] = 1;
+                stack.push({x, y: height - 1});
+            }
+        }
+        
+        for (let y = 1; y < height - 1; y++) {
+            const leftIdx = y * width;
+            const rightIdx = y * width + (width - 1);
+            if (edgeMask[leftIdx] === 0) {
+                outside[leftIdx] = 1;
+                stack.push({x: 0, y});
+            }
+            if (edgeMask[rightIdx] === 0) {
+                outside[rightIdx] = 1;
+                stack.push({x: width - 1, y});
+            }
+        }
+        
+        while (stack.length > 0) {
+            const point = stack.pop();
+            const neighbors = [
+                {x: point.x + 1, y: point.y},
+                {x: point.x - 1, y: point.y},
+                {x: point.x, y: point.y + 1},
+                {x: point.x, y: point.y - 1}
+            ];
+            
+            for (const n of neighbors) {
+                if (n.x < 0 || n.x >= width || n.y < 0 || n.y >= height) continue;
+                const nidx = n.y * width + n.x;
+                if (outside[nidx] === 0 && edgeMask[nidx] === 0) {
+                    outside[nidx] = 1;
+                    stack.push(n);
+                }
+            }
+        }
+        
+        const mask = new Uint8ClampedArray(width * height).fill(0);
+        for (let i = 0; i < mask.length; i++) {
+            if (outside[i] === 0) {
+                mask[i] = 255;
+            }
+        }
+        
+        // 7. V8关键改进：极小羽化 - 3×3核，保持圆领等细节
+        const blurredMask = gaussianBlur3x3(mask, width, height);
+        for (let i = 0; i < blurredMask.length; i++) {
+            if (blurredMask[i] < 39) blurredMask[i] = 0;
+        }
+        return blurredMask;
+    }
+    
+    // 计算mask边界框
+    function getMaskBounds(mask, width, height) {
+        let minX = width, minY = height, maxX = 0, maxY = 0;
+        
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const idx = y * width + x;
+                if (mask[idx] > 38) {
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                }
+            }
+        }
+        
+        if (minX === width) {
+            return { x: 0, y: 0, w: width, h: height };
+        }
+        
+        return {
+            x: minX,
+            y: minY,
+            w: maxX - minX + 1,
+            h: maxY - minY + 1
+        };
+    }
+    
+    // V8核心：画作主体提取 - 调用后端OpenCV显著性检测+GrabCut模型
+    // 学术方法: Static Saliency -> Canny边缘辅助 -> GrabCut迭代优化 -> 轮廓分析
+    async function extractArtifactSubjectV8(artifactCtx, width, height) {
+        console.log('[主体检测] 调用后端检测模型...');
+        
+        try {
+            // 1. 将画作canvas转为base64发送给后端
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = width;
+            tempCanvas.height = height;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(artifactCtx.canvas, 0, 0, width, height);
+            const base64Data = tempCanvas.toDataURL('image/png').split(',')[1];
+            
+            // 2. 调用后端检测API
+            const response = await fetch('/fashion/detect-subject/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    artifact_image: base64Data,
+                    return_debug: false
+                })
+            });
+            
+            if (!response.ok) {
+                console.warn('[主体检测] API调用失败，使用前端fallback');
+                return fallbackSubjectExtraction(artifactCtx, width, height);
+            }
+            
+            const result = await response.json();
+            if (result.error) {
+                console.warn('[主体检测] 后端返回错误:', result.error);
+                return fallbackSubjectExtraction(artifactCtx, width, height);
+            }
+            
+            console.log('[主体检测结果]', result);
+            
+            return {
+                x: result.x,
+                y: result.y,
+                w: result.w,
+                h: result.h,
+                confidence: result.confidence,
+                method: result.method || 'saliency+grabcut'
+            };
+        } catch (e) {
+            console.warn('[主体检测] 异常:', e, '使用前端fallback');
+            return fallbackSubjectExtraction(artifactCtx, width, height);
+        }
+    }
+    
+    // 前端fallback：当后端检测不可用时的简单版提取
+    function fallbackSubjectExtraction(artifactCtx, width, height) {
+        const imageData = artifactCtx.getImageData(0, 0, width, height);
+        const edges = detectEdges(imageData, width, height, 30, 100);
+        const threshold = calculateOtsuThreshold(imageData);
+        const thresholded = applyThreshold(imageData, threshold);
+        
+        const saliency = new Uint8ClampedArray(width * height);
+        for (let i = 0; i < width * height; i++) {
+            saliency[i] = 255 - thresholded[i];
+        }
+        
+        const combined = new Uint8ClampedArray(width * height);
+        for (let i = 0; i < width * height; i++) {
+            combined[i] = Math.max(edges[i], saliency[i]);
+        }
+        
+        const dilated = dilate(combined, width, height, 5, 2);
+        const contours = findContours(dilated, width, height);
+        
+        if (contours.length === 0) {
+            return { x: 0, y: 0, w: width, h: height };
+        }
+        
+        const margin = Math.max(2, Math.round(Math.min(width, height) * 0.02));
+        const candidates = contours.map(c => {
+            const bounds = getContourBounds(c);
+            const area = calculateContourArea(c);
+            const touchesLeft = bounds.x <= margin;
+            const touchesTop = bounds.y <= margin;
+            const touchesRight = (bounds.x + bounds.w) >= (width - margin);
+            const touchesBottom = (bounds.y + bounds.h) >= (height - margin);
+            const sides = (touchesLeft ? 1 : 0) + (touchesTop ? 1 : 0) + (touchesRight ? 1 : 0) + (touchesBottom ? 1 : 0);
+            const score = area * Math.pow(0.6, sides);
+            return { bounds, area, score };
+        });
+        const best = candidates.reduce((acc, cur) => (cur.score > acc.score ? cur : acc));
+        const bounds = best.bounds;
+        
+        const padding = 0.05;
+        const padX = Math.round(bounds.w * padding);
+        const padY = Math.round(bounds.h * padding);
+
+        const x0 = Math.max(0, bounds.x - padX);
+        const y0 = Math.max(0, bounds.y - padY);
+        const x1 = Math.min(width, bounds.x + bounds.w + padX);
+        const y1 = Math.min(height, bounds.y + bounds.h + padY);
+
+        return {
+            x: x0, y: y0,
+            w: Math.max(1, x1 - x0),
+            h: Math.max(1, y1 - y0)
+        };
+    }
+    
+    // 边缘检测
+    function detectEdges(imageData, width, height, lowThreshold, highThreshold) {
+        const data = imageData.data;
+        const grayData = new Uint8ClampedArray(width * height);
+        
+        for (let i = 0; i < data.length; i += 4) {
+            grayData[i / 4] = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+        }
+        
+        const sobelX = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
+        const sobelY = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
+        
+        const gx = new Int32Array(width * height);
+        const gy = new Int32Array(width * height);
+        
+        for (let y = 1; y < height - 1; y++) {
+            for (let x = 1; x < width - 1; x++) {
+                let gxi = 0, gyi = 0;
+                
+                for (let ky = -1; ky <= 1; ky++) {
+                    for (let kx = -1; kx <= 1; kx++) {
+                        const idx = (y + ky) * width + (x + kx);
+                        gxi += grayData[idx] * sobelX[(ky + 1) * 3 + (kx + 1)];
+                        gyi += grayData[idx] * sobelY[(ky + 1) * 3 + (kx + 1)];
+                    }
+                }
+                
+                const idx = y * width + x;
+                gx[idx] = gxi;
+                gy[idx] = gyi;
+            }
+        }
+        
+        const magnitude = new Float32Array(width * height);
+        for (let i = 0; i < width * height; i++) {
+            magnitude[i] = Math.sqrt(gx[i] * gx[i] + gy[i] * gy[i]);
+        }
+        
+        const edges = new Uint8ClampedArray(width * height);
+        for (let i = 0; i < width * height; i++) {
+            edges[i] = magnitude[i] > highThreshold ? 255 : 0;
+        }
+        
+        return edges;
+    }
+    
+    // Otsu阈值计算
+    function calculateOtsuThreshold(imageData) {
+        const data = imageData.data;
+        const histogram = new Array(256).fill(0);
+        
+        for (let i = 0; i < data.length; i += 4) {
+            const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+            histogram[gray]++;
+        }
+        
+        let maxVariance = 0;
+        let optimalThreshold = 128;
+        
+        for (let t = 0; t < 256; t++) {
+            let w0 = 0, w1 = 0, u0 = 0, u1 = 0;
+            
+            for (let i = 0; i <= t; i++) {
+                w0 += histogram[i];
+                u0 += i * histogram[i];
+            }
+            
+            for (let i = t + 1; i < 256; i++) {
+                w1 += histogram[i];
+                u1 += i * histogram[i];
+            }
+            
+            if (w0 === 0 || w1 === 0) continue;
+            
+            u0 /= w0;
+            u1 /= w1;
+            
+            const variance = w0 * w1 * Math.pow(u0 - u1, 2);
+            if (variance > maxVariance) {
+                maxVariance = variance;
+                optimalThreshold = t;
+            }
+        }
+        
+        return optimalThreshold;
+    }
+    
+    // 应用阈值
+    function applyThreshold(imageData, threshold) {
+        const result = new Uint8ClampedArray(imageData.data.length / 4);
+        const data = imageData.data;
+        
+        for (let i = 0, j = 0; i < data.length; i += 4, j++) {
+            const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+            result[j] = gray > threshold ? 255 : 0;
+        }
+        
+        return result;
+    }
+    
+    // 获取轮廓边界
+    function getContourBounds(contour) {
+        if (contour.length === 0) {
+            return { x: 0, y: 0, w: 0, h: 0 };
+        }
+        
+        let minX = contour[0].x, minY = contour[0].y;
+        let maxX = minX, maxY = minY;
+        
+        for (const point of contour) {
+            if (point.x < minX) minX = point.x;
+            if (point.x > maxX) maxX = point.x;
+            if (point.y < minY) minY = point.y;
+            if (point.y > maxY) maxY = point.y;
+        }
+        
+        return {
+            x: minX,
+            y: minY,
+            w: maxX - minX + 1,
+            h: maxY - minY + 1
+        };
+    }
+    
+    // V8核心：精确缩放映射
+    async function mapArtifactToGarmentV8(artifactCtx, garmentMask, canvasWidth, canvasHeight) {
+        console.log('=== mapArtifactToGarmentV8开始 ===');
+        console.log('[主体检测] 输入mask长度:', garmentMask.length, 'canvas尺寸:', canvasWidth, 'x', canvasHeight);
+        
+        const width = 256;
+        const height = 256;
+        console.log('[主体检测] 处理尺寸:', width, 'x', height);
+        
+        // 1. 调用后端模型提取画作主体（显著性检测+GrabCut）
+        const subject = await extractArtifactSubjectV8(artifactCtx, width, height);
+        console.log('[主体检测] 检测到主体区域:', subject);
+        
+        // 可视化反馈：在页面上显示检测结果
+        const debugDiv = document.getElementById('subject-debug-info');
+        if (debugDiv) {
+            debugDiv.innerHTML = `🔍 主体: (${subject.x},${subject.y}) ${subject.w}×${subject.h} | 置信度: ${(subject.confidence||0).toFixed(2)} | 方法: ${subject.method||'fallback'}`;
+            debugDiv.style.display = 'block';
+        }
+        
+        // 2. 计算mask边界框
+        const maskBounds = getMaskBounds(garmentMask, width, height);
+        
+        // 3. V8改进：铺满mask边界框缩放 (1.02倍) - 避免上下留白
+        const scaleX = maskBounds.w / Math.max(1, subject.w);
+        const scaleY = maskBounds.h / Math.max(1, subject.h);
+        const scale = Math.max(scaleX, scaleY) * 1.02;
+        
+        const newW = Math.round(subject.w * scale);
+        const newH = Math.round(subject.h * scale);
+        
+        // 4. 创建结果canvas
+        const resultCanvas = document.createElement('canvas');
+        resultCanvas.width = width;
+        resultCanvas.height = height;
+        const resultCtx = resultCanvas.getContext('2d');
+        
+        // 5. 绘制白色背景
+        resultCtx.fillStyle = '#FFFFFF';
+        resultCtx.fillRect(0, 0, width, height);
+        
+        // 6. 计算居中位置
+        const startX = maskBounds.x + Math.round((maskBounds.w - newW) / 2);
+        const startY = maskBounds.y + Math.round((maskBounds.h - newH) / 2);
+        
+        // 7. V8改进：高质量缩放（模拟LANCZOS）
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = newW;
+        tempCanvas.height = newH;
+        const tempCtx = tempCanvas.getContext('2d');
+        
+        // 使用高质量图像平滑
+        tempCtx.imageSmoothingEnabled = true;
+        tempCtx.imageSmoothingQuality = 'high';
+        
+        tempCtx.drawImage(
+            artifactCtx.canvas,
+            subject.x, subject.y, subject.w, subject.h,
+            0, 0, newW, newH
+        );
+        
+        const tempImageData = tempCtx.getImageData(0, 0, newW, newH).data;
+        const resultImageData = resultCtx.createImageData(width, height);
+        const resultData = resultImageData.data;
+        
+        for (let i = 0; i < resultData.length; i += 4) {
+            resultData[i] = 255;
+            resultData[i + 1] = 255;
+            resultData[i + 2] = 255;
+            resultData[i + 3] = 255;
+        }
+        
+        for (let y = 0; y < newH; y++) {
+            const resultY = startY + y;
+            if (resultY < 0 || resultY >= height) continue;
+            for (let x = 0; x < newW; x++) {
+                const resultX = startX + x;
+                if (resultX < 0 || resultX >= width) continue;
+                const maskIdx = resultY * width + resultX;
+                const maskVal = garmentMask[maskIdx];
+                if (maskVal > 38) {
+                    const tempIdx = (y * newW + x) * 4;
+                    const resultIdx = (resultY * width + resultX) * 4;
+                    const maskAlpha = maskVal / 255;
+                    const pixelAlpha = (tempImageData[tempIdx + 3] / 255) * maskAlpha;
+                    const inv = 1 - pixelAlpha;
+                    resultData[resultIdx] = Math.round(resultData[resultIdx] * inv + tempImageData[tempIdx] * pixelAlpha);
+                    resultData[resultIdx + 1] = Math.round(resultData[resultIdx + 1] * inv + tempImageData[tempIdx + 1] * pixelAlpha);
+                    resultData[resultIdx + 2] = Math.round(resultData[resultIdx + 2] * inv + tempImageData[tempIdx + 2] * pixelAlpha);
+                    resultData[resultIdx + 3] = 255;
+                }
+            }
+        }
+        
+        resultCtx.putImageData(resultImageData, 0, 0);
+        
+        return resultCanvas;
+    }
+    
+    // 更新设计预览 - V8精确边界控制版
+    function updateDesignPreview() {
+        console.log('=== V8 updateDesignPreview 被调用 ===');
+        console.log('selectedGarmentType:', selectedGarmentType);
+        console.log('selectedArtifactImage:', selectedArtifactImage);
+        
+        if (!selectedGarmentType) {
+            console.log('缺少服装款式');
+            return;
+        }
+
+        console.log('更新预览:', selectedGarmentType.name, '性别:', selectedGender);
+
+        const renderToken = ++previewRenderToken;
+        const canvas = document.getElementById('design-canvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const drawLabels = () => {
+            ctx.font = 'bold 18px Microsoft YaHei, sans-serif';
+            ctx.fillStyle = '#2C3E50';
+            ctx.textAlign = 'center';
+            ctx.fillText(selectedGarmentType.name, canvas.width / 2, 35);
+            ctx.font = '14px Microsoft YaHei, sans-serif';
+            ctx.fillStyle = '#666';
+            ctx.fillText('V8精确边界控制 · 画作映射', canvas.width / 2, canvas.height - 25);
+            ctx.font = 'bold 10px Microsoft YaHei, sans-serif';
+            ctx.fillStyle = '#8B0000';
+            ctx.fillText('V8.0', canvas.width - 30, canvas.height - 25);
+        };
+
+        getGarmentImage(selectedGarmentType.image)
+            .then(img => {
+                if (renderToken !== previewRenderToken) return;
+                console.log('=== 服装图片加载成功 ===');
+                console.log('服装图片尺寸:', img.width, 'x', img.height);
+
+                const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+                const width = img.width * scale;
+                const height = img.height * scale;
+                const x = (canvas.width - width) / 2;
+                const y = (canvas.height - height) / 2;
+
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, x, y, width, height);
+
+                if (!selectedArtifactImage) {
+                    backDesignCanvas = null;
+                    drawLabels();
+                    update3DModel();
+                    return;
+                }
+
+                const artifactCanvas = document.createElement('canvas');
+                artifactCanvas.width = 256;
+                artifactCanvas.height = 256;
+                const artifactCtx = artifactCanvas.getContext('2d');
+                // 先填充白色背景，避免透明通道导致颜色混合错误
+                artifactCtx.fillStyle = '#ffffff';
+                artifactCtx.fillRect(0, 0, 256, 256);
+                artifactCtx.drawImage(selectedArtifactImage, 0, 0, 256, 256);
+
+                const garmentCanvas = document.createElement('canvas');
+                garmentCanvas.width = 256;
+                garmentCanvas.height = 256;
+                const garmentCtx = garmentCanvas.getContext('2d');
+                // 先填充白色背景，避免透明通道导致颜色错误
+                garmentCtx.fillStyle = '#ffffff';
+                garmentCtx.fillRect(0, 0, 256, 256);
+                garmentCtx.drawImage(img, 0, 0, 256, 256);
+
+                const requestBody = {
+                    artifact_image: artifactCanvas.toDataURL('image/png'),
+                    garment_image: garmentCanvas.toDataURL('image/png'),
+                    garment_src: selectedGarmentType ? selectedGarmentType.image : null,
+                    artifact_id: selectedArtifact ? selectedArtifact.id : null,
+                    garment_type_id: selectedGarmentType ? selectedGarmentType.id : null,
+                    gender: selectedGender
+                };
+
+                console.log('[V8映射] 准备发送请求:', {
+                    artifact_id: requestBody.artifact_id,
+                    garment_type_id: requestBody.garment_type_id,
+                    selectedArtifact: selectedArtifact,
+                    selectedGarmentType: selectedGarmentType
+                });
+
+                // 只有选择了画作和服装才进行映射
+                if (!requestBody.artifact_id || !requestBody.garment_type_id) {
+                    console.log('[V8映射] 未选择画作或服装，跳过映射');
+                    return;
+                }
+
+                console.log('[V8映射] 开始发送映射请求到后端...');
+                fetch('/fashion/map-v8/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(requestBody)
+                })
+                    .then(response => {
+                        console.log('[V8映射] 收到响应，状态码:', response.status);
+                        if (!response.ok) {
+                            console.error('[V8映射] 响应失败:', response.status, response.statusText);
+                        }
+                        return response.json();
+                    })
+                    .then(async data => {
+                        if (renderToken !== previewRenderToken) return;
+                        if (!data || !data.result) {
+                            throw new Error(data && data.error ? data.error : '映射失败');
+                        }
+
+                        const resultImg = new Image();
+                        resultImg.onload = async () => {
+                            if (renderToken !== previewRenderToken) return;
+                            // 先清除并填充白色背景，然后绘制映射结果
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                            ctx.drawImage(resultImg, x, y, width, height);
+                            // 叠加半透明线稿显示服装轮廓（包括领子等细节）
+                            ctx.save();
+                            ctx.globalAlpha = 0.25;
+                            ctx.drawImage(img, x, y, width, height);
+                            ctx.restore();
+
+                            try {
+                                const focusX = typeof selectedArtifactFocusX === 'number' ? selectedArtifactFocusX : 0.5;
+                                const shiftX = Math.max(0, Math.min(0.75, 0.35 + (focusX - 0.5) * 0.6));
+                                const shiftY = 0.06;
+                                const garmentName = selectedGarmentType ? selectedGarmentType.name : '';
+                                const isQipao = String(garmentName).toLowerCase().includes('旗袍');
+                                const isTshirt = String(garmentName).includes('T恤') || String(garmentName).includes('t恤');
+                                const backSameAsFront = isQipao || isTshirt;
+                                
+                                const backCanvas = getBackDesignCanvas();
+                                backCanvas.width = canvas.width;
+                                backCanvas.height = canvas.height;
+                                const backCtx = backCanvas.getContext('2d');
+                                backCtx.fillStyle = '#ffffff';
+                                backCtx.fillRect(0, 0, backCanvas.width, backCanvas.height);
+                                backCtx.drawImage(resultImg, x, y, width, height);
+                                backCtx.save();
+                                backCtx.globalAlpha = 0.25;
+                                const backGarmentLayer = createBackGarmentLayer(img, garmentName, width, height);
+                                backCtx.drawImage(backGarmentLayer, x, y);
+                                backCtx.restore();
+                            } catch (err) {
+                                backDesignCanvas = null;
+                            }
+
+                            if (typeof data.coverage === 'number') {
+                                ctx.font = 'bold 14px Arial';
+                                ctx.fillStyle = '#8B0000';
+                                ctx.textAlign = 'right';
+                                ctx.fillText(`Mask覆盖率: ${data.coverage}%`, canvas.width - 10, canvas.height - 25);
+                            }
+
+                            const thumbSize = Math.min(canvas.width, canvas.height) * 0.25;
+                            const thumbX = canvas.width - thumbSize - 15;
+                            const thumbY = 15;
+
+                            ctx.save();
+                            ctx.globalAlpha = 0.9;
+                            ctx.drawImage(selectedArtifactImage, thumbX, thumbY, thumbSize, thumbSize);
+                            ctx.strokeStyle = '#8B0000';
+                            ctx.lineWidth = 3;
+                            ctx.strokeRect(thumbX, thumbY, thumbSize, thumbSize);
+
+                            ctx.fillStyle = '#8B0000';
+                            ctx.font = 'bold 12px Microsoft YaHei, sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('当前选择', thumbX + thumbSize / 2, thumbY + thumbSize + 20);
+                            ctx.restore();
+                            drawLabels();
+                            update3DModel();
+                        };
+                        resultImg.onerror = () => {
+                            throw new Error('映射结果图片加载失败');
+                        };
+                        resultImg.src = data.result;
+                    })
+                    .catch(async error => {
+                        if (renderToken !== previewRenderToken) return;
+                        console.error('V8映射接口失败:', error);
+                        // 兜底：只显示画作原图，不进行复杂映射
+                        ctx.drawImage(img, x, y, width, height);
+                        drawLabels();
+                        update3DModel();
+                    });
+            })
+            .catch(() => {
+                if (renderToken !== previewRenderToken) return;
+                console.error('服装图片加载失败:', selectedGarmentType.image);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const colors = [];
+                drawGarment(ctx, canvas.width, canvas.height, colors, selectedGender, selectedGarmentType.name, selectedGarmentType.id, null);
+            });
+    }
+
+    // 绘制服装 - 根据款式ID绘制不同服装
+    function drawGarment(ctx, width, height, colors, gender, garmentName, garmentId, artifactImage) {
+        const centerX = width / 2;
+        const centerY = height / 2;
+
+        // 绘制渐变背景
+        const gradient = ctx.createLinearGradient(0, 0, width, height);
+        gradient.addColorStop(0, '#FAF8F5');
+        gradient.addColorStop(1, '#E8E2D5');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.strokeStyle = '#2C3E50';
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        ctx.beginPath();
+
+        if (gender === 'male') {
+            // 男性服装 - 根据ID区分不同款式
+            switch(parseInt(garmentId)) {
+                case 1: // T恤 - 圆领短袖（放大的缩略图形状）
+                    // 领口 - 凹进去的圆弧
+                    ctx.moveTo(centerX - 72, centerY - 128);
+                    ctx.lineTo(centerX - 40, centerY - 128);
+                    ctx.quadraticCurveTo(centerX, centerY - 104, centerX + 40, centerY - 128);
+                    ctx.lineTo(centerX + 72, centerY - 128);
+                    // 右肩
+                    ctx.lineTo(centerX + 88, centerY - 112);
+                    // 右袖 - 短袖
+                    ctx.lineTo(centerX + 152, centerY - 100);
+                    ctx.lineTo(centerX + 152, centerY - 40);
+                    ctx.lineTo(centerX + 88, centerY - 48);
+                    // 右侧身体
+                    ctx.lineTo(centerX + 80, centerY + 120);
+                    // 底部
+                    ctx.lineTo(centerX - 80, centerY + 120);
+                    // 左侧身体
+                    ctx.lineTo(centerX - 88, centerY - 48);
+                    // 左袖 - 短袖
+                    ctx.lineTo(centerX - 152, centerY - 40);
+                    ctx.lineTo(centerX - 152, centerY - 100);
+                    ctx.lineTo(centerX - 88, centerY - 112);
+                    // 左肩
+                    ctx.lineTo(centerX - 72, centerY - 128);
+                    ctx.closePath();
+                    break;
+
+                case 2: // 中式长衫 - 经典中式长衫（放大的缩略图形状）
+                    // 立领 - 明显的小立领
+                    ctx.moveTo(centerX - 32, centerY - 140);
+                    ctx.lineTo(centerX + 32, centerY - 140);
+                    ctx.lineTo(centerX + 24, centerY - 112);
+                    ctx.lineTo(centerX - 24, centerY - 112);
+                    ctx.closePath();
+
+                    // 领口下方的衣服主体
+                    ctx.moveTo(centerX - 60, centerY - 112);
+                    ctx.lineTo(centerX + 60, centerY - 112);
+                    // 右侧身体轮廓
+                    ctx.lineTo(centerX + 72, centerY - 80);
+                    ctx.lineTo(centerX + 88, centerY + 20);
+                    ctx.lineTo(centerX + 72, centerY + 100);
+                    ctx.lineTo(centerX + 88, centerY + 160);
+                    // 底部 - 稍微展开的底摆
+                    ctx.lineTo(centerX - 88, centerY + 160);
+                    // 左侧身体轮廓
+                    ctx.lineTo(centerX - 72, centerY + 100);
+                    ctx.lineTo(centerX - 88, centerY + 20);
+                    ctx.lineTo(centerX - 72, centerY - 80);
+                    ctx.lineTo(centerX - 60, centerY - 112);
+                    ctx.closePath();
+
+                    // 右袖 - 较长的袖子
+                    ctx.moveTo(centerX + 72, centerY - 60);
+                    ctx.lineTo(centerX + 152, centerY - 60);
+                    ctx.lineTo(centerX + 152, centerY + 32);
+                    ctx.lineTo(centerX + 88, centerY + 32);
+                    ctx.closePath();
+
+                    // 左袖
+                    ctx.moveTo(centerX - 72, centerY - 60);
+                    ctx.lineTo(centerX - 152, centerY - 60);
+                    ctx.lineTo(centerX - 152, centerY + 32);
+                    ctx.lineTo(centerX - 88, centerY + 32);
+                    ctx.closePath();
+
+                    // 中线 - 立领下方开始
+                    ctx.moveTo(centerX, centerY - 112);
+                    ctx.lineTo(centerX, centerY + 160);
+
+                    // 盘扣 - 2个盘扣，更明显的装饰
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY - 32, 6, 0, Math.PI * 2);
+                    ctx.arc(centerX, centerY + 32, 6, 0, Math.PI * 2);
+                    ctx.stroke();
+                    break;
+
+                case 3: // 唐装外套 - 经典唐装（放大的缩略图形状）
+                    // 领口
+                    ctx.moveTo(centerX - 72, centerY - 128);
+                    ctx.lineTo(centerX + 72, centerY - 128);
+                    // 右侧
+                    ctx.lineTo(centerX + 88, centerY - 88);
+                    ctx.lineTo(centerX + 112, centerY + 20);
+                    ctx.lineTo(centerX + 80, centerY + 140);
+                    ctx.lineTo(centerX + 100, centerY + 180);
+                    // 底部
+                    ctx.lineTo(centerX - 100, centerY + 180);
+                    // 左侧
+                    ctx.lineTo(centerX - 80, centerY + 140);
+                    ctx.lineTo(centerX - 112, centerY + 20);
+                    ctx.lineTo(centerX - 88, centerY - 88);
+                    ctx.lineTo(centerX - 72, centerY - 128);
+                    ctx.closePath();
+
+                    // 右袖
+                    ctx.moveTo(centerX + 88, centerY - 72);
+                    ctx.lineTo(centerX + 160, centerY - 72);
+                    ctx.lineTo(centerX + 160, centerY + 40);
+                    ctx.lineTo(centerX + 96, centerY + 40);
+                    ctx.closePath();
+
+                    // 左袖
+                    ctx.moveTo(centerX - 88, centerY - 72);
+                    ctx.lineTo(centerX - 160, centerY - 72);
+                    ctx.lineTo(centerX - 160, centerY + 40);
+                    ctx.lineTo(centerX - 96, centerY + 40);
+                    ctx.closePath();
+
+                    // 中线
+                    ctx.moveTo(centerX, centerY - 128);
+                    ctx.lineTo(centerX, centerY + 180);
+                    break;
+
+                case 4: // 汉服长裤 - 上衣+裤子（放大的缩略图形状）
+                    // 上衣领口
+                    ctx.moveTo(centerX - 40, centerY - 152);
+                    ctx.lineTo(centerX + 40, centerY - 152);
+                    // 右侧身体
+                    ctx.lineTo(centerX + 60, centerY - 112);
+                    ctx.lineTo(centerX + 72, centerY - 20);
+                    ctx.lineTo(centerX + 48, centerY + 48);
+                    ctx.lineTo(centerX + 60, centerY + 80);
+                    // 底部
+                    ctx.lineTo(centerX - 60, centerY + 80);
+                    // 左侧身体
+                    ctx.lineTo(centerX - 48, centerY + 48);
+                    ctx.lineTo(centerX - 72, centerY - 20);
+                    ctx.lineTo(centerX - 60, centerY - 112);
+                    ctx.lineTo(centerX - 40, centerY - 152);
+                    ctx.closePath();
+
+                    // 右袖
+                    ctx.moveTo(centerX + 60, centerY - 100);
+                    ctx.lineTo(centerX + 128, centerY - 100);
+                    ctx.lineTo(centerX + 128, centerY - 20);
+                    ctx.lineTo(centerX + 68, centerY - 20);
+                    ctx.closePath();
+
+                    // 左袖
+                    ctx.moveTo(centerX - 60, centerY - 100);
+                    ctx.lineTo(centerX - 128, centerY - 100);
+                    ctx.lineTo(centerX - 128, centerY - 20);
+                    ctx.lineTo(centerX - 68, centerY - 20);
+                    ctx.closePath();
+
+                    // 左裤腿
+                    ctx.moveTo(centerX - 32, centerY + 80);
+                    ctx.lineTo(centerX - 48, centerY + 168);
+                    ctx.lineTo(centerX - 16, centerY + 168);
+                    ctx.lineTo(centerX - 8, centerY + 80);
+                    ctx.closePath();
+
+                    // 右裤腿
+                    ctx.moveTo(centerX + 32, centerY + 80);
+                    ctx.lineTo(centerX + 48, centerY + 168);
+                    ctx.lineTo(centerX + 16, centerY + 168);
+                    ctx.lineTo(centerX + 8, centerY + 80);
+                    ctx.closePath();
+                    break;
+            }
+        } else {
+            // 女性服装 - 根据ID区分不同款式
+            switch(parseInt(garmentId)) {
+                case 4: // T恤 - 女款圆领短袖（放大的缩略图形状）
+                    // 领口 - 凹进去的圆弧
+                    ctx.moveTo(centerX - 64, centerY - 128);
+                    ctx.lineTo(centerX - 36, centerY - 128);
+                    ctx.quadraticCurveTo(centerX, centerY - 108, centerX + 36, centerY - 128);
+                    ctx.lineTo(centerX + 64, centerY - 128);
+                    // 右肩
+                    ctx.lineTo(centerX + 80, centerY - 112);
+                    // 右袖 - 短袖
+                    ctx.lineTo(centerX + 140, centerY - 100);
+                    ctx.lineTo(centerX + 140, centerY - 40);
+                    ctx.lineTo(centerX + 80, centerY - 48);
+                    // 右侧身体 - 略修身
+                    ctx.lineTo(centerX + 72, centerY + 112);
+                    // 底部
+                    ctx.lineTo(centerX - 72, centerY + 112);
+                    // 左侧身体 - 略修身
+                    ctx.lineTo(centerX - 80, centerY - 48);
+                    // 左袖 - 短袖
+                    ctx.lineTo(centerX - 140, centerY - 40);
+                    ctx.lineTo(centerX - 140, centerY - 100);
+                    ctx.lineTo(centerX - 80, centerY - 112);
+                    // 左肩
+                    ctx.lineTo(centerX - 64, centerY - 128);
+                    ctx.closePath();
+                    break;
+
+                case 5: // 旗袍 - 经典旗袍（放大的缩略图形状）
+                    // 领口
+                    ctx.moveTo(centerX - 40, centerY - 160);
+                    ctx.lineTo(centerX + 40, centerY - 160);
+                    // 右侧修身曲线
+                    ctx.lineTo(centerX + 48, centerY - 140);
+                    ctx.lineTo(centerX + 56, centerY - 80);
+                    ctx.lineTo(centerX + 48, centerY);
+                    ctx.lineTo(centerX + 40, centerY + 80);
+                    ctx.lineTo(centerX + 32, centerY + 160);
+                    ctx.lineTo(centerX + 24, centerY + 180);
+                    // 底部
+                    ctx.lineTo(centerX - 24, centerY + 180);
+                    // 左侧修身曲线
+                    ctx.lineTo(centerX - 32, centerY + 160);
+                    ctx.lineTo(centerX - 40, centerY + 80);
+                    ctx.lineTo(centerX - 48, centerY);
+                    ctx.lineTo(centerX - 56, centerY - 80);
+                    ctx.lineTo(centerX - 48, centerY - 140);
+                    ctx.lineTo(centerX - 40, centerY - 160);
+                    ctx.closePath();
+
+                    // 右肩带
+                    ctx.moveTo(centerX + 40, centerY - 152);
+                    ctx.lineTo(centerX + 48, centerY - 160);
+                    ctx.lineTo(centerX + 40, centerY - 120);
+
+                    // 左肩带
+                    ctx.moveTo(centerX - 40, centerY - 152);
+                    ctx.lineTo(centerX - 48, centerY - 160);
+                    ctx.lineTo(centerX - 40, centerY - 120);
+
+                    // 中线
+                    ctx.moveTo(centerX, centerY - 160);
+                    ctx.lineTo(centerX, centerY + 80);
+                    break;
+
+                case 6: // 汉服上衣 - 宽袖设计（放大的缩略图形状）
+                    // 领口V形 - 更深的V形
+                    ctx.moveTo(centerX - 60, centerY - 140);
+                    ctx.lineTo(centerX, centerY - 72);
+                    ctx.lineTo(centerX + 60, centerY - 140);
+                    // 右侧
+                    ctx.lineTo(centerX + 72, centerY - 100);
+                    ctx.lineTo(centerX + 80, centerY - 32);
+                    ctx.lineTo(centerX + 60, centerY + 72);
+                    ctx.lineTo(centerX + 48, centerY + 140);
+                    // 底部
+                    ctx.lineTo(centerX - 48, centerY + 140);
+                    // 左侧
+                    ctx.lineTo(centerX - 60, centerY + 72);
+                    ctx.lineTo(centerX - 80, centerY - 32);
+                    ctx.lineTo(centerX - 72, centerY - 100);
+                    ctx.lineTo(centerX - 60, centerY - 140);
+                    ctx.closePath();
+
+                    // 右宽袖 - 更宽更明显的袖子
+                    ctx.moveTo(centerX + 72, centerY - 80);
+                    ctx.lineTo(centerX + 160, centerY - 80);
+                    ctx.lineTo(centerX + 160, centerY + 40);
+                    ctx.lineTo(centerX + 72, centerY + 20);
+                    ctx.closePath();
+
+                    // 左宽袖
+                    ctx.moveTo(centerX - 72, centerY - 80);
+                    ctx.lineTo(centerX - 160, centerY - 80);
+                    ctx.lineTo(centerX - 160, centerY + 40);
+                    ctx.lineTo(centerX - 72, centerY + 20);
+                    ctx.closePath();
+
+                    // 交领的装饰线 - V形领口内侧
+                    ctx.moveTo(centerX - 40, centerY - 120);
+                    ctx.lineTo(centerX, centerY - 72);
+                    ctx.lineTo(centerX + 40, centerY - 120);
+                    break;
+
+                case 7: // 汉服裙装 - 上衣+大裙摆（放大的缩略图形状）
+                    // 上衣领口
+                    ctx.moveTo(centerX - 40, centerY - 152);
+                    ctx.lineTo(centerX + 40, centerY - 152);
+                    // 右侧
+                    ctx.lineTo(centerX + 48, centerY - 112);
+                    ctx.lineTo(centerX + 60, centerY - 40);
+                    ctx.lineTo(centerX + 40, centerY + 32);
+                    ctx.lineTo(centerX + 32, centerY + 72);
+                    // 底部
+                    ctx.lineTo(centerX - 32, centerY + 72);
+                    // 左侧
+                    ctx.lineTo(centerX - 40, centerY + 32);
+                    ctx.lineTo(centerX - 60, centerY - 40);
+                    ctx.lineTo(centerX - 48, centerY - 112);
+                    ctx.lineTo(centerX - 40, centerY - 152);
+                    ctx.closePath();
+
+                    // 右袖
+                    ctx.moveTo(centerX + 48, centerY - 100);
+                    ctx.lineTo(centerX + 120, centerY - 100);
+                    ctx.lineTo(centerX + 120, centerY - 32);
+                    ctx.lineTo(centerX + 56, centerY - 32);
+                    ctx.closePath();
+
+                    // 左袖
+                    ctx.moveTo(centerX - 48, centerY - 100);
+                    ctx.lineTo(centerX - 120, centerY - 100);
+                    ctx.lineTo(centerX - 120, centerY - 32);
+                    ctx.lineTo(centerX - 56, centerY - 32);
+                    ctx.closePath();
+
+                    // 裙摆 - 多层波浪形，更明显
+                    // 第一层（最宽）
+                    ctx.moveTo(centerX - 112, centerY + 72);
+                    ctx.quadraticCurveTo(centerX - 140, centerY + 128, centerX - 112, centerY + 144);
+                    ctx.lineTo(centerX + 112, centerY + 144);
+                    ctx.quadraticCurveTo(centerX + 140, centerY + 128, centerX + 112, centerY + 72);
+                    ctx.closePath();
+
+                    // 第二层
+                    ctx.moveTo(centerX - 88, centerY + 144);
+                    ctx.quadraticCurveTo(centerX - 112, centerY + 160, centerX - 88, centerY + 176);
+                    ctx.lineTo(centerX + 88, centerY + 176);
+                    ctx.quadraticCurveTo(centerX + 112, centerY + 160, centerX + 88, centerY + 144);
+                    ctx.closePath();
+
+                    // 第三层
+                    ctx.moveTo(centerX - 64, centerY + 176);
+                    ctx.quadraticCurveTo(centerX - 80, centerY + 184, centerX - 64, centerY + 192);
+                    ctx.lineTo(centerX + 64, centerY + 192);
+                    ctx.quadraticCurveTo(centerX + 80, centerY + 184, centerX + 64, centerY + 176);
+                    ctx.closePath();
+
+                    // 裙摆褶皱线
+                    ctx.moveTo(centerX - 40, centerY + 72);
+                    ctx.quadraticCurveTo(centerX - 36, centerY + 128, centerX - 32, centerY + 176);
+                    ctx.moveTo(centerX, centerY + 72);
+                    ctx.quadraticCurveTo(centerX, centerY + 136, centerX, centerY + 188);
+                    ctx.moveTo(centerX + 40, centerY + 72);
+                    ctx.quadraticCurveTo(centerX + 36, centerY + 128, centerX + 32, centerY + 176);
+                    break;
+
+                case 8: // 唐装裙套装 - 上衣+A字裙（放大的缩略图形状）
+                    // 领口 - 小V形，无立领
+                    ctx.moveTo(centerX - 40, centerY - 120);
+                    ctx.lineTo(centerX, centerY - 88);
+                    ctx.lineTo(centerX + 40, centerY - 120);
+                    // 右侧
+                    ctx.lineTo(centerX + 56, centerY - 80);
+                    ctx.lineTo(centerX + 64, centerY - 32);
+                    ctx.lineTo(centerX + 48, centerY + 32);
+                    ctx.lineTo(centerX + 40, centerY + 48);
+                    // 底部 - 上衣结束
+                    ctx.lineTo(centerX - 40, centerY + 48);
+                    // 左侧
+                    ctx.lineTo(centerX - 48, centerY + 32);
+                    ctx.lineTo(centerX - 64, centerY - 32);
+                    ctx.lineTo(centerX - 56, centerY - 80);
+                    ctx.lineTo(centerX - 40, centerY - 120);
+                    ctx.closePath();
+
+                    // 右袖
+                    ctx.moveTo(centerX + 56, centerY - 72);
+                    ctx.lineTo(centerX + 120, centerY - 72);
+                    ctx.lineTo(centerX + 120, centerY + 8);
+                    ctx.lineTo(centerX + 64, centerY + 8);
+                    ctx.closePath();
+
+                    // 左袖
+                    ctx.moveTo(centerX - 56, centerY - 72);
+                    ctx.lineTo(centerX - 120, centerY - 72);
+                    ctx.lineTo(centerX - 120, centerY + 8);
+                    ctx.lineTo(centerX - 64, centerY + 8);
+                    ctx.closePath();
+
+                    // 明显的A字裙 - 上衣下方分开，带波浪裙摆
+                    ctx.moveTo(centerX - 96, centerY + 48);
+                    ctx.quadraticCurveTo(centerX - 128, centerY + 104, centerX - 96, centerY + 152);
+                    ctx.lineTo(centerX + 96, centerY + 152);
+                    ctx.quadraticCurveTo(centerX + 128, centerY + 104, centerX + 96, centerY + 48);
+                    ctx.closePath();
+
+                    // 裙摆第二层
+                    ctx.moveTo(centerX - 72, centerY + 152);
+                    ctx.quadraticCurveTo(centerX - 88, centerY + 176, centerX - 72, centerY + 192);
+                    ctx.lineTo(centerX + 72, centerY + 192);
+                    ctx.quadraticCurveTo(centerX + 88, centerY + 176, centerX + 72, centerY + 152);
+                    ctx.closePath();
+
+                    // 裙摆褶皱线
+                    ctx.moveTo(centerX - 32, centerY + 48);
+                    ctx.quadraticCurveTo(centerX - 24, centerY + 124, centerX - 16, centerY + 192);
+                    ctx.moveTo(centerX, centerY + 48);
+                    ctx.quadraticCurveTo(centerX, centerY + 132, centerX, centerY + 196);
+                    ctx.moveTo(centerX + 32, centerY + 48);
+                    ctx.quadraticCurveTo(centerX + 24, centerY + 124, centerX + 16, centerY + 192);
+                    break;
+            }
+        }
+
+        if (artifactImage) {
+            console.log('drawGarment: artifactImage detected, but V8 mapping is handled by updateDesignPreview()');
+            // V8映射已在updateDesignPreview()中处理，这里只绘制简单占位符
+            ctx.save();
+            ctx.clip();
+            
+            // 绘制浅灰色背景表示V8映射区域
+            ctx.fillStyle = '#f0f0f0';
+            ctx.fillRect(0, 0, width, height);
+            
+            // 添加V8映射提示文本
+            ctx.fillStyle = '#666';
+            ctx.font = '14px Microsoft YaHei, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('V8映射生效中', width / 2, height / 2);
+            
+            ctx.restore();
+
+        } else if (colors.length > 0) {
+            const mainColor = colors[0];
+            ctx.fillStyle = mainColor;
+            ctx.fill();
+        }
+
+        if (!artifactImage) {
+            ctx.strokeStyle = colors[1] || '#D4AF37';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // 装饰图案 - 使用画作色彩
+            if (colors.length > 1) {
+                // 第一层装饰
+                ctx.fillStyle = colors[1] || '#B8860B';
+                ctx.globalAlpha = 0.6;
+                
+                if (gender === 'male') {
+                    // 男性服装的盘扣装饰
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY - 100, 8, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.beginPath();
+                    ctx.arc(centerX - 30, centerY - 60, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.beginPath();
+                    ctx.arc(centerX + 30, centerY - 60, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // 女性旗袍的花朵装饰
+                    ctx.beginPath();
+                    ctx.ellipse(centerX, centerY + 50, 15, 8, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.beginPath();
+                    ctx.ellipse(centerX - 20, centerY + 80, 8, 12, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.beginPath();
+                    ctx.ellipse(centerX + 20, centerY + 80, 8, 12, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.globalAlpha = 1.0;
+            }
+
+            // 第二层装饰
+            if (colors.length > 2) {
+                ctx.strokeStyle = colors[2] || '#DAA520';
+                ctx.lineWidth = 1.5;
+                ctx.globalAlpha = 0.7;
+                
+                if (gender === 'male') {
+                    // 男性服装的线条装饰
+                    ctx.beginPath();
+                    ctx.moveTo(centerX - 60, centerY - 40);
+                    ctx.lineTo(centerX + 60, centerY - 40);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(centerX - 50, centerY + 40);
+                    ctx.lineTo(centerX + 50, centerY + 40);
+                    ctx.stroke();
+                } else {
+                    // 女性旗袍的曲线装饰（可能被看成"笑脸"的部分）
+                    // 直接取消，避免干扰整体效果
+                }
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        // 添加标题文字
+        ctx.fillStyle = '#2C3E50';
+        ctx.font = 'bold 16px Microsoft YaHei, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(garmentName, centerX, 30);
+        
+        ctx.font = '12px Microsoft YaHei, sans-serif';
+        ctx.fillStyle = '#7F8C8D';
+        ctx.fillText('传统服饰 · 现代演绎', centerX, height - 20);
+    }
+
+    function getGarmentDesignBounds(width, height, gender, garmentId) {
+        const id = parseInt(garmentId);
+
+        let marginX;
+        let marginTop;
+        let marginBottom;
+
+        if (gender === 'female') {
+            switch (id) {
+                case 5:
+                    marginX = width * 0.1;
+                    marginTop = height * 0.12;
+                    marginBottom = height * 0.14;
+                    break;
+                case 7:
+                    marginX = width * 0.1;
+                    marginTop = height * 0.12;
+                    marginBottom = height * 0.16;
+                    break;
+                case 8:
+                    marginX = width * 0.1;
+                    marginTop = height * 0.1;
+                    marginBottom = height * 0.18;
+                    break;
+                default:
+                    marginX = width * 0.1;
+                    marginTop = height * 0.12;
+                    marginBottom = height * 0.16;
+                    break;
+            }
+        } else {
+            switch (id) {
+                case 2:
+                case 3:
+                    marginX = width * 0.1;
+                    marginTop = height * 0.14;
+                    marginBottom = height * 0.16;
+                    break;
+                default:
+                    marginX = width * 0.1;
+                    marginTop = height * 0.12;
+                    marginBottom = height * 0.16;
+                    break;
+            }
+        }
+
+        const w = width - marginX * 2;
+        const h = height - marginTop - marginBottom;
+        const x = marginX;
+        const y = marginTop;
+
+        return { x, y, w, h };
+    }
+
+    function mapArtifactToGarmentGrid(ctx, img, contentBox, dstX, dstY, dstW, dstH, rows, cols) {
+        const sx0 = contentBox.x;
+        const sy0 = contentBox.y;
+        const sw = contentBox.w;
+        const sh = contentBox.h;
+
+        const cellW = dstW / cols;
+        const cellH = dstH / rows;
+        const srcCellW = sw / cols;
+        const srcCellH = sh / rows;
+
+        for (let r = 0; r < rows; r++) {
+            const sy = sy0 + r * srcCellH;
+            const ty = dstY + r * cellH;
+
+            for (let c = 0; c < cols; c++) {
+                const sx = sx0 + c * srcCellW;
+                const tx = dstX + c * cellW;
+
+                ctx.drawImage(
+                    img,
+                    sx,
+                    sy,
+                    srcCellW,
+                    srcCellH,
+                    tx,
+                    ty,
+                    cellW,
+                    cellH
+                );
+            }
+        }
+    }
+
+    // 智能计算画作主体区域（在内容区域内进一步找"主体"）
+    function computeMainSubjectBounds(img, contentBox) {
+        const canvas = document.createElement('canvas');
+        const w = Math.max(1, Math.round(contentBox.w));
+        const h = Math.max(1, Math.round(contentBox.h));
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+
+        ctx.drawImage(
+            img,
+            contentBox.x,
+            contentBox.y,
+            contentBox.w,
+            contentBox.h,
+            0,
+            0,
+            w,
+            h
+        );
+
+        const imageData = ctx.getImageData(0, 0, w, h);
+        const data = imageData.data;
+
+        let rSum = 0;
+        let gSum = 0;
+        let bSum = 0;
+        let count = 0;
+
+        for (let i = 0; i < data.length; i += 4) {
+            const a = data[i + 3];
+            if (a <= 10) continue;
+            rSum += data[i];
+            gSum += data[i + 1];
+            bSum += data[i + 2];
+            count++;
+        }
+
+        if (count === 0) {
+            return contentBox;
+        }
+
+        const avgR = rSum / count;
+        const avgG = gSum / count;
+        const avgB = bSum / count;
+
+        const diffThreshold = 45;
+
+        let minX = w;
+        let minY = h;
+        let maxX = 0;
+        let maxY = 0;
+        let found = false;
+
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                const i = (y * w + x) * 4;
+                const a = data[i + 3];
+                if (a <= 10) continue;
+
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+
+                const dr = Math.abs(r - avgR);
+                const dg = Math.abs(g - avgG);
+                const db = Math.abs(b - avgB);
+                const diff = dr + dg + db;
+
+                if (diff > diffThreshold) {
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                    found = true;
+                }
+            }
+        }
+
+        if (!found) {
+            return contentBox;
+        }
+
+        const paddingX = Math.round(w * 0.08);
+
+        minX = Math.max(0, minX - paddingX);
+        maxX = Math.min(w - 1, maxX + paddingX);
+
+        const subjW = Math.max(1, maxX - minX + 1);
+        const subjH = h;
+
+        const minFracW = 0.25;
+
+        if (subjW < w * minFracW) {
+            return contentBox;
+        }
+
+        return {
+            x: contentBox.x + minX,
+            y: contentBox.y,
+            w: subjW,
+            h: subjH
+        };
+    }
+
+    // 智能计算画作内容边界（去白边/画框）
+    function computeArtifactContentBounds(img) {
+        const canvas = document.createElement('canvas');
+        const w = img.width;
+        const h = img.height;
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        
+        const imageData = ctx.getImageData(0, 0, w, h);
+        const data = imageData.data;
+        
+        // 阈值：判断是否为白边/画框的亮度阈值
+        const whiteThreshold = 240; 
+        // 容差：判断是否为透明
+        const alphaThreshold = 10;
+
+        let minX = w, minY = h, maxX = 0, maxY = 0;
+        let found = false;
+
+        // 扫描寻找边界
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                const i = (y * w + x) * 4;
+                const r = data[i];
+                const g = data[i+1];
+                const b = data[i+2];
+                const a = data[i+3];
+
+                // 判断是否为有效像素 (非完全透明 且 非高亮白色/灰白色边框)
+                const isWhite = r > whiteThreshold && g > whiteThreshold && b > whiteThreshold;
+                if (a > alphaThreshold && !isWhite) {
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                    found = true;
+                }
+            }
+        }
+
+        if (!found) {
+            return { x: 0, y: 0, w: w, h: h };
+        }
+
+        const padding = 2;
+        minX = Math.max(0, minX - padding);
+        minY = Math.max(0, minY - padding);
+        maxX = Math.min(w, maxX + padding);
+        maxY = Math.min(h, maxY + padding);
+
+        let boxW = maxX - minX;
+        let boxH = maxY - minY;
+
+        const insetX = Math.max(0, Math.round(boxW * 0.04));
+        const insetY = Math.max(0, Math.round(boxH * 0.04));
+
+        minX = Math.min(maxX - 1, minX + insetX);
+        minY = Math.min(maxY - 1, minY + insetY);
+        maxX = Math.max(minX + 1, maxX - insetX);
+        maxY = Math.max(minY + 1, maxY - insetY);
+
+        boxW = maxX - minX;
+        boxH = maxY - minY;
+
+        return {
+            x: minX,
+            y: minY,
+            w: boxW,
+            h: boxH
+        };
+    }
+
+    // 提取画作主色调
+    function getDominantColor(img, x, y, w, h) {
+        const canvas = document.createElement('canvas');
+        // 缩小尺寸以加快计算，50x50足够
+        const scaleW = 50;
+        const scaleH = 50;
+        canvas.width = scaleW;
+        canvas.height = scaleH;
+        const ctx = canvas.getContext('2d');
+        
+        // 绘制裁剪后的区域
+        ctx.drawImage(img, x, y, w, h, 0, 0, scaleW, scaleH);
+        
+        const imageData = ctx.getImageData(0, 0, scaleW, scaleH);
+        const data = imageData.data;
+        let r = 0, g = 0, b = 0, count = 0;
+
+        for (let i = 0; i < data.length; i += 4) {
+            // 忽略透明像素和过白像素（避免画框残留影响底色）
+            if (data[i+3] > 10 && !(data[i] > 240 && data[i+1] > 240 && data[i+2] > 240)) {
+                r += data[i];
+                g += data[i+1];
+                b += data[i+2];
+                count++;
+            }
+        }
+
+        if (count === 0) return '#f5f5f5'; // 默认底色
+
+        r = Math.round(r / count);
+        g = Math.round(g / count);
+        b = Math.round(b / count);
+
+        return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    let scene, camera, renderer;
+    let garmentGroup, garmentFrontMesh, garmentBackMesh, garmentWireMesh;
+    let garmentFrontTexture, garmentBackTexture;
+    let backDesignCanvas = null;
+    let modelInitialized = false;
+    let animationHandle = null;
+    let viewRotateX = 0;
+    let viewRotateY = 0;
+    let dragging = false;
+    let lastPointerX = 0;
+    let lastPointerY = 0;
+    let resizeListenerBound = false;
+    const baseTiltX = -0.08;
+
+    function getBackDesignCanvas() {
+        if (!backDesignCanvas) backDesignCanvas = document.createElement('canvas');
+        return backDesignCanvas;
+    }
+
+    function createShiftedArtifactCtx(img, shiftX, shiftY) {
+        const size = 256;
+        const baseCanvas = document.createElement('canvas');
+        baseCanvas.width = size;
+        baseCanvas.height = size;
+        const baseCtx = baseCanvas.getContext('2d');
+        baseCtx.imageSmoothingEnabled = true;
+        baseCtx.imageSmoothingQuality = 'high';
+        baseCtx.drawImage(img, 0, 0, size, size);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, size, size);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        const sx = Math.round(size * shiftX);
+        const sy = Math.round(size * shiftY);
+        const dx0 = -sx;
+        const dx1 = size - sx;
+        const dy0 = -sy;
+        const dy1 = size - sy;
+        ctx.drawImage(baseCanvas, dx0, dy0);
+        ctx.drawImage(baseCanvas, dx1, dy0);
+        ctx.drawImage(baseCanvas, dx0, dy1);
+        ctx.drawImage(baseCanvas, dx1, dy1);
+        return ctx;
+    }
+
+    function getBackSuppressionRegions(garmentName) {
+        const rawName = String(garmentName || '');
+        const name = rawName.toLowerCase();
+        const regions = [];
+
+        const isQipao = name.includes('旗袍');
+        const isSkirt = name.includes('马面裙');
+
+        if (isSkirt) return regions;
+
+        if (isQipao) {
+            regions.push({ x: 0.36, y: 0.01, w: 0.28, h: 0.12, blur: 0, fill: 1.0, passes: 1, mode: 'fill' });
+            return regions;
+        }
+
+        regions.push({ x: 0.00, y: 0.00, w: 1.00, h: 0.40, blur: 18, fill: 0.88, passes: 5 });
+        regions.push({ x: 0.00, y: 0.00, w: 0.36, h: 0.34, blur: 18, fill: 0.78, passes: 4 });
+        regions.push({ x: 0.64, y: 0.00, w: 0.36, h: 0.34, blur: 18, fill: 0.78, passes: 4 });
+        regions.push({ x: 0.40, y: 0.10, w: 0.20, h: 0.86, blur: 16, fill: 0.72, passes: 4 });
+        return regions;
+    }
+
+    function sampleAverageRGB(ctx, x, y, w, h) {
+        try {
+            const imageData = ctx.getImageData(x, y, w, h);
+            const data = imageData.data;
+            let r = 0, g = 0, b = 0, count = 0;
+            for (let i = 0; i < data.length; i += 4) {
+                const a = data[i + 3];
+                if (a < 10) continue;
+                r += data[i];
+                g += data[i + 1];
+                b += data[i + 2];
+                count++;
+            }
+            if (count <= 0) return { r: 245, g: 245, b: 245 };
+            return {
+                r: Math.round(r / count),
+                g: Math.round(g / count),
+                b: Math.round(b / count)
+            };
+        } catch (e) {
+            return { r: 245, g: 245, b: 245 };
+        }
+    }
+
+    function softenRegionInPlace(ctx, x, y, w, h, blurPx, fillAlpha, avgOverride) {
+        if (w <= 0 || h <= 0) return;
+        if (blurPx > 0) {
+            const roiCanvas = document.createElement('canvas');
+            roiCanvas.width = w;
+            roiCanvas.height = h;
+            const roiCtx = roiCanvas.getContext('2d');
+            roiCtx.drawImage(ctx.canvas, x, y, w, h, 0, 0, w, h);
+
+            ctx.save();
+            ctx.filter = `blur(${blurPx}px)`;
+            ctx.drawImage(roiCanvas, x, y);
+            ctx.restore();
+        }
+
+        let avg = avgOverride;
+        if (!avg) {
+            const pad = Math.max(6, Math.round(Math.min(w, h) * 0.10));
+            const sampleH = Math.max(8, Math.min(pad * 2, Math.round(h * 0.6)));
+            const sampleW = Math.max(12, Math.min(w, Math.round(w * 0.9)));
+            const sampleX = Math.max(0, Math.min(ctx.canvas.width - sampleW, x + Math.round((w - sampleW) / 2)));
+            let sampleY = y + h + pad;
+            if (sampleY + sampleH > ctx.canvas.height) {
+                sampleY = y - pad - sampleH;
+            }
+            sampleY = Math.max(0, Math.min(ctx.canvas.height - sampleH, sampleY));
+            avg = sampleAverageRGB(ctx, sampleX, sampleY, sampleW, sampleH);
+        }
+
+        ctx.save();
+        ctx.fillStyle = `rgba(${avg.r}, ${avg.g}, ${avg.b}, ${fillAlpha})`;
+        ctx.fillRect(x, y, w, h);
+        ctx.restore();
+    }
+
+    function createBackGarmentLayer(img, garmentName, drawW, drawH) {
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(drawW));
+        canvas.height = Math.max(1, Math.round(drawH));
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const name = String(garmentName || '').toLowerCase();
+        const isQipao = name.includes('旗袍');
+        let qipaoBodyAvg = null;
+        if (isQipao) {
+            const bx = Math.round(canvas.width * 0.34);
+            const by = Math.round(canvas.height * 0.34);
+            const bw = Math.max(12, Math.round(canvas.width * 0.32));
+            const bh = Math.max(12, Math.round(canvas.height * 0.22));
+            qipaoBodyAvg = sampleAverageRGB(
+                ctx,
+                Math.max(0, Math.min(canvas.width - bw, bx)),
+                Math.max(0, Math.min(canvas.height - bh, by)),
+                bw,
+                bh
+            );
+        }
+
+        const regions = getBackSuppressionRegions(garmentName);
+        for (const r of regions) {
+            const x = Math.round(r.x * canvas.width);
+            const y = Math.round(r.y * canvas.height);
+            const w = Math.round(r.w * canvas.width);
+            const h = Math.round(r.h * canvas.height);
+            const passes = Math.max(1, Math.round(r.passes || 1));
+            for (let i = 0; i < passes; i++) {
+                if (r.mode === 'fill') {
+                    const avg = qipaoBodyAvg || { r: 245, g: 245, b: 245 };
+                    ctx.save();
+                    ctx.fillStyle = `rgba(${avg.r}, ${avg.g}, ${avg.b}, ${r.fill})`;
+                    ctx.fillRect(x, y, w, h);
+                    ctx.restore();
+                } else {
+                    softenRegionInPlace(ctx, x, y, w, h, r.blur, r.fill, qipaoBodyAvg);
+                }
+            }
+        }
+
+        if (!isQipao) {
+            ctx.save();
+            ctx.filter = 'blur(1.5px)';
+            ctx.drawImage(canvas, 0, 0);
+            ctx.restore();
+        }
+
+        return canvas;
+    }
+
+    function applyGarmentRotation() {
+        if (garmentGroup) {
+            garmentGroup.rotation.x = baseTiltX + viewRotateX;
+            garmentGroup.rotation.y = viewRotateY;
+        }
+    }
+
+    function disposeThreeMesh(mesh) {
+        if (!mesh) return;
+        if (mesh.geometry) mesh.geometry.dispose();
+        if (mesh.material) {
+            if (Array.isArray(mesh.material)) {
+                mesh.material.forEach(m => {
+                    if (m && m.map) m.map.dispose();
+                    if (m) m.dispose();
+                });
+            } else {
+                if (mesh.material.map) mesh.material.map.dispose();
+                mesh.material.dispose();
+            }
+        }
+    }
+
+    function getCanvasCornerAverageRGB(canvas) {
+        const w = canvas.width;
+        const h = canvas.height;
+        const ctx = canvas.getContext('2d');
+        const patch = Math.max(2, Math.min(24, Math.floor(Math.min(w, h) * 0.08)));
+        const samples = [
+            { x: 0, y: 0 },
+            { x: Math.max(0, w - patch), y: 0 },
+            { x: 0, y: Math.max(0, h - patch) },
+            { x: Math.max(0, w - patch), y: Math.max(0, h - patch) }
+        ];
+
+        let rSum = 0;
+        let gSum = 0;
+        let bSum = 0;
+        let count = 0;
+
+        for (const s of samples) {
+            const img = ctx.getImageData(s.x, s.y, patch, patch).data;
+            for (let i = 0; i < img.length; i += 4) {
+                const a = img[i + 3];
+                if (a < 10) continue;
+                rSum += img[i];
+                gSum += img[i + 1];
+                bSum += img[i + 2];
+                count++;
+            }
+        }
+
+        if (!count) return { r: 255, g: 255, b: 255 };
+        return {
+            r: Math.round(rSum / count),
+            g: Math.round(gSum / count),
+            b: Math.round(bSum / count)
+        };
+    }
+
+    function createSeamSoftenedCanvas(sourceCanvas, opts) {
+        const w = sourceCanvas.width;
+        const h = sourceCanvas.height;
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(sourceCanvas, 0, 0);
+
+        const bandRatio = opts && typeof opts.bandRatio === 'number' ? opts.bandRatio : 0.06;
+        const strength = opts && typeof opts.strength === 'number' ? opts.strength : 0.85;
+        const bandPx = Math.max(1, Math.round(w * bandRatio));
+        const base = (opts && opts.baseColor) ? opts.baseColor : getCanvasCornerAverageRGB(sourceCanvas);
+
+        const imageData = ctx.getImageData(0, 0, w, h);
+        const data = imageData.data;
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                const edgeDist = Math.min(x, w - 1 - x);
+                if (edgeDist >= bandPx) continue;
+                const t = edgeDist / bandPx;
+                const k = Math.max(0, Math.min(1, t * t * (3 - 2 * t)));
+                const blend = (1 - k) * strength;
+                const idx = (y * w + x) * 4;
+                data[idx] = Math.round(data[idx] * (1 - blend) + base.r * blend);
+                data[idx + 1] = Math.round(data[idx + 1] * (1 - blend) + base.g * blend);
+                data[idx + 2] = Math.round(data[idx + 2] * (1 - blend) + base.b * blend);
+            }
+        }
+        ctx.putImageData(imageData, 0, 0);
+        return canvas;
+    }
+
+    function createSeamMatchedCanvases(frontSourceCanvas, backSourceCanvas, opts) {
+        const w = frontSourceCanvas.width;
+        const h = frontSourceCanvas.height;
+
+        const frontCanvas = document.createElement('canvas');
+        frontCanvas.width = w;
+        frontCanvas.height = h;
+        const frontCtx = frontCanvas.getContext('2d');
+        frontCtx.imageSmoothingEnabled = true;
+        frontCtx.imageSmoothingQuality = 'high';
+        frontCtx.drawImage(frontSourceCanvas, 0, 0);
+
+        const backCanvas = document.createElement('canvas');
+        backCanvas.width = w;
+        backCanvas.height = h;
+        const backCtx = backCanvas.getContext('2d');
+        backCtx.imageSmoothingEnabled = true;
+        backCtx.imageSmoothingQuality = 'high';
+        backCtx.drawImage(backSourceCanvas, 0, 0);
+
+        const bandRatio = opts && typeof opts.bandRatio === 'number' ? opts.bandRatio : 0.06;
+        const strength = opts && typeof opts.strength === 'number' ? opts.strength : 0.9;
+        const bandPx = Math.max(1, Math.round(w * bandRatio));
+
+        const frontImageData = frontCtx.getImageData(0, 0, w, h);
+        const backImageData = backCtx.getImageData(0, 0, w, h);
+        const fd = frontImageData.data;
+        const bd = backImageData.data;
+
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                const edgeDist = Math.min(x, w - 1 - x);
+                if (edgeDist >= bandPx) continue;
+                const t = edgeDist / bandPx;
+                const k = Math.max(0, Math.min(1, t * t * (3 - 2 * t)));
+                const blend = (1 - k) * strength;
+                const idx = (y * w + x) * 4;
+
+                const avgR = (fd[idx] + bd[idx]) * 0.5;
+                const avgG = (fd[idx + 1] + bd[idx + 1]) * 0.5;
+                const avgB = (fd[idx + 2] + bd[idx + 2]) * 0.5;
+
+                fd[idx] = Math.round(fd[idx] * (1 - blend) + avgR * blend);
+                fd[idx + 1] = Math.round(fd[idx + 1] * (1 - blend) + avgG * blend);
+                fd[idx + 2] = Math.round(fd[idx + 2] * (1 - blend) + avgB * blend);
+
+                bd[idx] = Math.round(bd[idx] * (1 - blend) + avgR * blend);
+                bd[idx + 1] = Math.round(bd[idx + 1] * (1 - blend) + avgG * blend);
+                bd[idx + 2] = Math.round(bd[idx + 2] * (1 - blend) + avgB * blend);
+            }
+        }
+
+        frontCtx.putImageData(frontImageData, 0, 0);
+        backCtx.putImageData(backImageData, 0, 0);
+        return { frontCanvas, backCanvas };
+    }
+
+    function init3DModel() {
+        const container = document.getElementById('model-3d');
+        if (!container) return;
+
+        if (typeof THREE === 'undefined') {
+            while (container.firstChild) container.removeChild(container.firstChild);
+            try {
+                const designCanvas = document.getElementById('design-canvas');
+                if (designCanvas && designCanvas.width > 0 && designCanvas.height > 0) {
+                    const img = new Image();
+                    img.src = designCanvas.toDataURL('image/png');
+                    img.style.width = '100%';
+                    img.style.height = '100%';
+                    img.style.objectFit = 'contain';
+                    container.appendChild(img);
+                }
+            } catch (e) {}
+            return;
+        }
+
+        const width = container.clientWidth || container.offsetWidth || 600;
+        const height = container.clientHeight || container.offsetHeight || 460;
+
+        while (container.firstChild) container.removeChild(container.firstChild);
+
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111827);
+
+        camera = new THREE.PerspectiveCamera(55, width / height, 0.1, 1000);
+        camera.position.z = 5;
+
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(width, height);
+        container.appendChild(renderer.domElement);
+        renderer.domElement.style.cursor = 'grab';
+        renderer.domElement.style.touchAction = 'none';
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.65);
+        directionalLight.position.set(2, 2, 3);
+        scene.add(directionalLight);
+
+        modelInitialized = true;
+        update3DModel();
+
+        const el = renderer.domElement;
+        el.addEventListener('pointerdown', (e) => {
+            dragging = true;
+            lastPointerX = e.clientX;
+            lastPointerY = e.clientY;
+            try { el.setPointerCapture(e.pointerId); } catch (err) {}
+            el.style.cursor = 'grabbing';
+        });
+        el.addEventListener('pointermove', (e) => {
+            if (!dragging) return;
+            const dx = e.clientX - lastPointerX;
+            const dy = e.clientY - lastPointerY;
+            lastPointerX = e.clientX;
+            lastPointerY = e.clientY;
+            viewRotateY += dx * 0.01;
+            viewRotateX += dy * 0.01;
+            viewRotateX = Math.max(-0.55, Math.min(0.55, viewRotateX));
+            applyGarmentRotation();
+            renderer.render(scene, camera);
+        });
+        const endDrag = () => {
+            dragging = false;
+            el.style.cursor = 'grab';
+        };
+        el.addEventListener('pointerup', endDrag);
+        el.addEventListener('pointercancel', endDrag);
+        el.addEventListener('pointerleave', endDrag);
+
+        el.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const step = Math.sign(e.deltaY) * 0.4;
+            camera.position.z = Math.max(2.5, Math.min(10, camera.position.z + step));
+            renderer.render(scene, camera);
+        }, { passive: false });
+
+        if (!resizeListenerBound) {
+            resizeListenerBound = true;
+            window.addEventListener('resize', () => {
+                if (!renderer || !camera) return;
+                const w = container.clientWidth;
+                const h = container.clientHeight;
+                camera.aspect = w / Math.max(1, h);
+                camera.updateProjectionMatrix();
+                renderer.setSize(w, h);
+                update3DModel();
+            });
+        }
+    }
+
+    function update3DModel() {
+        if (!modelInitialized || !scene || !camera || !renderer) return;
+
+        if (garmentGroup) {
+            scene.remove(garmentGroup);
+            garmentGroup = null;
+        }
+
+        if (garmentFrontMesh) {
+            disposeThreeMesh(garmentFrontMesh);
+            garmentFrontMesh = null;
+        }
+        if (garmentBackMesh) {
+            disposeThreeMesh(garmentBackMesh);
+            garmentBackMesh = null;
+        }
+        if (garmentWireMesh) {
+            disposeThreeMesh(garmentWireMesh);
+            garmentWireMesh = null;
+        }
+
+        if (garmentFrontTexture) {
+            garmentFrontTexture.dispose();
+            garmentFrontTexture = null;
+        }
+        if (garmentBackTexture) {
+            garmentBackTexture.dispose();
+            garmentBackTexture = null;
+        }
+
+        const designCanvas = document.getElementById('design-canvas');
+        if (!designCanvas || designCanvas.width <= 0 || designCanvas.height <= 0) {
+            renderer.render(scene, camera);
+            return;
+        }
+
+        let backSourceCanvas = null;
+        if (
+            backDesignCanvas &&
+            backDesignCanvas.width === designCanvas.width &&
+            backDesignCanvas.height === designCanvas.height
+        ) {
+            backSourceCanvas = backDesignCanvas;
+        } else {
+            const backCanvas = document.createElement('canvas');
+            backCanvas.width = designCanvas.width;
+            backCanvas.height = designCanvas.height;
+            const backCtx = backCanvas.getContext('2d');
+            backCtx.save();
+            backCtx.translate(backCanvas.width, 0);
+            backCtx.scale(-1, 1);
+            backCtx.drawImage(designCanvas, 0, 0);
+            backCtx.restore();
+            backSourceCanvas = backCanvas;
+        }
+
+        const seamMatched = createSeamMatchedCanvases(designCanvas, backSourceCanvas, null);
+        garmentFrontTexture = new THREE.CanvasTexture(seamMatched.frontCanvas);
+        garmentFrontTexture.needsUpdate = true;
+        garmentFrontTexture.minFilter = THREE.LinearFilter;
+        garmentFrontTexture.magFilter = THREE.LinearFilter;
+
+        garmentBackTexture = new THREE.CanvasTexture(seamMatched.backCanvas);
+        garmentBackTexture.needsUpdate = true;
+        garmentBackTexture.minFilter = THREE.LinearFilter;
+        garmentBackTexture.magFilter = THREE.LinearFilter;
+
+        const canvasAspect = designCanvas.width / designCanvas.height;
+        const distance = camera.position.z;
+        const visibleHeight = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5)) * distance;
+        const visibleWidth = visibleHeight * camera.aspect;
+
+        let planeHeight = visibleHeight * 0.96;
+        let planeWidth = planeHeight * canvasAspect;
+        if (planeWidth > visibleWidth * 0.98) {
+            const scale = (visibleWidth * 0.98) / planeWidth;
+            planeWidth *= scale;
+            planeHeight *= scale;
+        }
+
+        const segmentsW = 60;
+        const segmentsH = 60;
+        const geometry = new THREE.PlaneGeometry(planeWidth, planeHeight, segmentsW, segmentsH);
+        const pos = geometry.attributes.position;
+        const halfW = planeWidth / 2;
+        const curvature = planeWidth * 0.12;
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i);
+            const t = Math.max(-1, Math.min(1, x / Math.max(1e-6, halfW)));
+            const z = Math.sin(t * (Math.PI / 2)) * curvature;
+            pos.setZ(i, z);
+        }
+        pos.needsUpdate = true;
+        geometry.computeVertexNormals();
+
+        garmentGroup = new THREE.Group();
+        garmentGroup.rotation.x = baseTiltX + viewRotateX;
+        garmentGroup.rotation.y = viewRotateY;
+        scene.add(garmentGroup);
+
+        const thickness = planeWidth * 0.01;
+
+        const frontMaterial = new THREE.MeshPhongMaterial({
+            map: garmentFrontTexture,
+            transparent: true,
+            side: THREE.FrontSide,
+            shininess: 40
+        });
+        garmentFrontMesh = new THREE.Mesh(geometry, frontMaterial);
+        garmentFrontMesh.position.z = thickness;
+        garmentGroup.add(garmentFrontMesh);
+
+        const backMaterial = new THREE.MeshPhongMaterial({
+            map: garmentBackTexture,
+            transparent: true,
+            side: THREE.FrontSide,
+            shininess: 40
+        });
+        garmentBackMesh = new THREE.Mesh(geometry.clone(), backMaterial);
+        garmentBackMesh.rotation.y = Math.PI;
+        garmentBackMesh.position.z = -thickness;
+        garmentGroup.add(garmentBackMesh);
+
+        const wireMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.12,
+            side: THREE.DoubleSide
+        });
+        garmentWireMesh = new THREE.Mesh(geometry.clone(), wireMaterial);
+        garmentWireMesh.position.z = thickness * 1.5;
+        garmentGroup.add(garmentWireMesh);
+
+        renderer.render(scene, camera);
+    }
+
+    // ============ V8调试测试函数 ============
+    window.testV8Mapping = function() {
+        console.log('=== 手动测试V8映射 ===');
+        // 模拟选择第一个服装和第一个画作
+        const garments = selectedGender === 'male' ? maleGarments : femaleGarments;
+        if (garments.length === 0) {
+            console.error('没有可用的服装');
+            return;
+        }
+        selectGarment(garments[0].id);
+        
+        // 等待服装加载，然后选择第一个画作
+        setTimeout(() => {
+            if (allArtifacts.length === 0) {
+                console.error('没有可用的画作');
+                return;
+            }
+            selectArtifact(allArtifacts[0].id);
+            console.log('测试完成，请查看控制台日志和画布效果');
+        }, 500);
+    };
+
+    // 检查URL参数是否启用调试模式
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('debug') === 'v8') {
+        window.enableV8Debug = true;
+        console.log('URL调试参数检测到，已启用V8调试模式');
+    }
+    
+    // 如果启用调试，自动运行测试
+    if (typeof window.enableV8Debug !== 'undefined' && window.enableV8Debug) {
+        console.log('V8调试模式已启用，3秒后自动运行测试...');
+        setTimeout(() => {
+            testV8Mapping();
+        }, 3000);
+    }
+
+</script>
+{% endblock %}

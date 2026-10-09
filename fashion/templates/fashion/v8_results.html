@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>V8精确边界控制映射结果展示</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2C3E50;
+            border-bottom: 3px solid #8B0000;
+            padding-bottom: 10px;
+            text-align: center;
+        }
+        .section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+        }
+        .section-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2C3E50;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .result-image {
+            max-width: 100%;
+            height: auto;
+            border: 3px solid #333;
+            border-radius: 4px;
+            margin: 10px auto;
+            display: block;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        .result-image:hover {
+            transform: scale(1.02);
+        }
+        .stats {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+        }
+        .highlight {
+            color: #8B0000;
+            font-weight: bold;
+        }
+        .navigation {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .nav-btn {
+            padding: 10px 30px;
+            margin: 5px;
+            font-size: 16px;
+            background: #8B0000;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .nav-btn:hover {
+            background: #a00000;
+        }
+        .nav-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .caption {
+            text-align: center;
+            color: #666;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 V8精确边界控制映射结果展示</h1>
+        
+        <div class="stats">
+            <div class="stat-row">
+                <span>总画作数</span>
+                <span class="highlight">50幅</span>
+            </div>
+            <div class="stat-row">
+                <span>总服装数</span>
+                <span class="highlight">7件</span>
+            </div>
+            <div class="stat-row">
+                <span>总映射数</span>
+                <span class="highlight">350个</span>
+            </div>
+            <div class="stat-row">
+                <span>成功率</span>
+                <span class="highlight">100%</span>
+            </div>
+            <div class="stat-row">
+                <span>V8特性</span>
+                <span class="highlight">精确边界 + 极小羽化 + 1.02倍缩放</span>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">📊 7件服装Mask覆盖率统计</div>
+            <div class="stats">
+                <div class="stat-row">
+                    <span>1. 宋褙子（女）.png</span>
+                    <span class="highlight">55.6%</span>
+                </div>
+                <div class="stat-row">
+                    <span>2. T恤.png</span>
+                    <span class="highlight">49.7%</span>
+                </div>
+                <div class="stat-row">
+                    <span>3. 宋褙子（男）.png ⭐</span>
+                    <span class="highlight">42.8% (v7: 60.6%)</span>
+                </div>
+                <div class="stat-row">
+                    <span>4. 马面裙.png</span>
+                    <span class="highlight">40.7%</span>
+                </div>
+                <div class="stat-row">
+                    <span>5. polo衫.png</span>
+                    <span class="highlight">40.0%</span>
+                </div>
+                <div class="stat-row">
+                    <span>6. 交领短袄（汉）.png</span>
+                    <span class="highlight">32.5%</span>
+                </div>
+                <div class="stat-row">
+                    <span>7. 旗袍.png ⭐</span>
+                    <span class="highlight">17.1%</span>
+                </div>
+            </div>
+            <p class="caption">⭐ 宋褙子（男）覆盖率降低17.8%，解决周围色块问题；旗袍圆领细节完整保留</p>
+        </div>
+
+        <div class="section">
+            <div class="section-title">🖼️ V8映射结果图片</div>
+            <div class="navigation">
+                <button class="nav-btn" onclick="showPage(1)">第1页</button>
+                <button class="nav-btn" onclick="showPage(2)">第2页</button>
+                <button class="nav-btn" onclick="showPage(3)">第3页</button>
+                <button class="nav-btn" onclick="showPage(4)">第4页</button>
+                <button class="nav-btn" onclick="showPage(5)">第5页</button>
+                <button class="nav-btn" onclick="showPage(6)">第6页</button>
+                <button class="nav-btn" onclick="showPage(7)">第7页</button>
+                <button class="nav-btn" onclick="showPage(8)">第8页</button>
+                <button class="nav-btn" onclick="showPage(9)">第9页</button>
+                <button class="nav-btn" onclick="showPage(10)">第10页</button>
+            </div>
+            
+            <div id="page-container">
+                <div id="page-content">
+                    <p class="caption">点击上方按钮查看不同页的结果</p>
+                </div>
+            </div>
+            
+            <p class="caption">点击图片可以在新标签页打开大图</p>
+        </div>
+
+        <div class="section">
+            <div class="section-title">🔑 V8核心改进点</div>
+            <div class="stats">
+                <div class="stat-row">
+                    <span>✓ 精确边界控制</span>
+                    <span class="highlight">完全移除膨胀</span>
+                </div>
+                <div class="stat-row">
+                    <span>✓ 极小羽化</span>
+                    <span class="highlight">3×3核, σ=0.5</span>
+                </div>
+                <div class="stat-row">
+                    <span>✓ 精确缩放</span>
+                    <span class="highlight">1.02倍</span>
+                </div>
+                <div class="stat-row">
+                    <span>✓ 轮廓过滤</span>
+                    <span class="highlight">40%阈值</span>
+                </div>
+                <div class="stat-row">
+                    <span>✓ 高质量插值</span>
+                    <span class="highlight">High质量</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">❓ 如何查看效果</div>
+            <ol style="line-height: 2;">
+                <li>点击上方"第X页"按钮选择要查看的页面</li>
+                <li>每页包含5幅画作 × 7件服装 = 35个映射结果</li>
+                <li><strong>重点查看</strong>：
+                    <ul>
+                        <li>宋褙子（男）.png - 验证周围无色块 ⭐</li>
+                        <li>旗袍.png - 验证圆领细节保留 ⭐</li>
+                    </ul>
+                </li>
+                <li>点击图片可以在新标签页打开大图</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        function showPage(pageNum) {
+            const imagePath = `/media/direct_mapping_v8_results_page${pageNum}.png`;
+            const pageContent = document.getElementById('page-content');
+            
+            pageContent.innerHTML = `
+                <h3 style="text-align: center; color: #2C3E50; margin: 20px 0;">
+                    第${pageNum}页 - 画作范围: ${(pageNum - 1) * 5 + 1}-${Math.min(pageNum * 5, 50)}
+                </h3>
+                <img src="${imagePath}" 
+                     class="result-image" 
+                     alt="V8映射结果 第${pageNum}页"
+                     onclick="window.open('${imagePath}', '_blank')">
+                <p class="caption">
+                    画作范围: harvard_${(pageNum - 1) * 5}.jpg ~ harvard_${Math.min(pageNum * 5, 50) - 1}.jpg<br>
+                    7件服装顺序: polo衫, T恤, 交领短袄（汉）, 宋褙子（女）, 宋褙子（男）⭐, 旗袍⭐, 马面裙
+                </p>
+            `;
+            
+            // 高亮当前页按钮
+            document.querySelectorAll('.nav-btn').forEach((btn, idx) => {
+                if (idx + 1 === pageNum) {
+                    btn.style.background = '#a00000';
+                    btn.style.transform = 'scale(1.1)';
+                } else {
+                    btn.style.background = '#8B0000';
+                    btn.style.transform = 'scale(1)';
+                }
+            });
+        }
+        
+        // 默认显示第1页
+        showPage(1);
+    </script>
+</body>
+</html>

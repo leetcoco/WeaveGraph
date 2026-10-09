@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300" width="200" height="300">
+  <style>
+    .outline { fill: none; stroke: #000000; stroke-width: 2; }
+  </style>
+  <!-- 多层裙摆 -->
+  <path class="outline" d="M30,50 C30,30 70,20 100,20 C130,20 170,30 170,50 L170,250 C170,270 130,280 100,280 C70,280 30,270 30,250 Z"/>
+  <!-- 褶皱线条 -->
+  <path class="outline" d="M50,60 L50,240"/>
+  <path class="outline" d="M80,60 L80,240"/>
+  <path class="outline" d="M120,60 L120,240"/>
+  <path class="outline" d="M150,60 L150,240"/>
+  <!-- 腰带 -->
+  <path class="outline" d="M40,50 L160,50"/>
+</svg>

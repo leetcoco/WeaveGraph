@@ -1,0 +1,21 @@
+使用中文字体: Microsoft YaHei
+使用图片: d:\八爪鱼\Color-net\models\graph_front_back_5paintings\hd_images\p00_09_front.png
+文件存在: True
+图像尺寸: 2048x2048
+
+=== Canny边缘检测 ===
+轮廓数: 89
+最大轮廓面积: 1514.0 (0.0%)
+有效轮廓数: 2
+
+=== 洪水填充后的mask ===
+mask面积: 0 (0.0%)
+
+=== 上半部分行宽分析 (前819行) ===
+有效行数: 0/819
+
+=== 调用_recover_v_neck_invasion ===
+Traceback (most recent call last):
+  File "d:\八爪鱼\Color-net\scripts\_debug_vneck.py", line 133, in <module>
+    print(f"修复前后面积变化: +{diff} 像素 ({diff/mask_area*100:+.1f}%)")
+ZeroDivisionError: division by zero

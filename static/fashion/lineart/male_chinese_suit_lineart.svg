@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 350" width="200" height="350">
+  <style>
+    .outline { fill: none; stroke: #000000; stroke-width: 2; }
+  </style>
+  <!-- 中式长衫主体 -->
+  <path class="outline" d="M50,30 C50,10 80,0 100,0 C120,0 150,10 150,30 L150,320 C150,340 120,350 100,350 C80,350 50,340 50,320 Z"/>
+  <!-- 立领 -->
+  <path class="outline" d="M80,30 L80,10 C80,5 85,0 90,0 C95,0 100,5 100,10 L100,30"/>
+  <!-- 盘扣 -->
+  <circle cx="100" cy="70" r="3" fill="#000"/>
+  <circle cx="100" cy="120" r="3" fill="#000"/>
+  <circle cx="100" cy="170" r="3" fill="#000"/>
+  <circle cx="100" cy="220" r="3" fill="#000"/>
+  <circle cx="100" cy="270" r="3" fill="#000"/>
+  <!-- 袖口 -->
+  <path class="outline" d="M30,100 L50,90 L50,140 L30,150 Z"/>
+  <path class="outline" d="M170,100 L150,90 L150,140 L170,150 Z"/>
+</svg>

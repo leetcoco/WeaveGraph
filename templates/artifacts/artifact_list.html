@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}文物总目 - 文物色彩探索平台{% endblock %}
+
+{% block content %}
+<div class="py-5">
+    <div class="container">
+        <h1 class="section-title">文物总目</h1>
+
+        <!-- 搜索框 -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <form method="get" class="d-flex">
+                    <input type="text" name="search" class="form-control" placeholder="搜索文物名称或描述..." value="{{ current_search }}">
+                    <button type="submit" class="btn btn-primary ms-2">
+                        <i class="bi bi-search"></i> 搜索
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 筛选区域 -->
+        <div class="filter-section">
+            <form method="get">
+                <input type="hidden" name="search" value="{{ current_search }}">
+                
+                <div class="row">
+                    <!-- 分类筛选 -->
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label filter-title"><i class="bi bi-tag"></i> 分类</label>
+                        <select name="category" class="form-select" onchange="this.form.submit()">
+                            <option value="">全部分类</option>
+                            {% for category in categories %}
+                            <option value="{{ category.slug }}" {% if current_category == category.slug %}selected{% endif %}>
+                                {{ category.name }} ({{ category.artifact_count }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- 展览筛选 -->
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label filter-title"><i class="bi bi-collection"></i> 展览</label>
+                        <select name="exhibition" class="form-select" onchange="this.form.submit()">
+                            <option value="">全部展览</option>
+                            {% for exhibition in exhibitions %}
+                            <option value="{{ exhibition.slug }}" {% if current_exhibition == exhibition.slug %}selected{% endif %}>
+                                {{ exhibition.title }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- 年代筛选 -->
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label filter-title"><i class="bi bi-clock"></i> 年代</label>
+                        <select name="era" class="form-select" onchange="this.form.submit()">
+                            <option value="">全部年代</option>
+                            {% for era in eras %}
+                            <option value="{{ era }}" {% if current_era == era %}selected{% endif %}>
+                                {{ era }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- 颜色筛选 -->
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label filter-title"><i class="bi bi-palette"></i> 颜色</label>
+                        <select name="color" class="form-select" onchange="this.form.submit()">
+                            <option value="">全部颜色</option>
+                            {% for color in colors %}
+                            <option value="{{ color }}" {% if current_color == color %}selected{% endif %}>
+                                {{ color }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 清除筛选 -->
+                <div class="text-end">
+                    <a href="{% url 'artifact_list' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i> 清除所有筛选
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- 文物列表 -->
+        {% if page_obj %}
+        <div class="row">
+            {% for artifact in page_obj %}
+            <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                <div class="card artifact-card">
+                    <a href="{% url 'artifact_detail' artifact.slug %}">
+                        {% if artifact.external_image %}
+                        <img src="{{ artifact.external_image }}" class="card-img-top" alt="{{ artifact.name }}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=&apos;http://www.w3.org/2000/svg&apos; width=&apos;640&apos; height=&apos;480&apos;><rect width=&apos;100%25&apos; height=&apos;100%25&apos; fill=&apos;%23f2f2f2&apos;/><text x=&apos;50%25&apos; y=&apos;50%25&apos; dominant-baseline=&apos;middle&apos; text-anchor=&apos;middle&apos; fill=&apos;%23999&apos; font-size=&apos;24&apos;>暂无图片</text></svg>'">
+                        {% elif artifact.image %}
+                        <img src="{{ artifact.image.url }}" class="card-img-top" alt="{{ artifact.name }}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=&apos;http://www.w3.org/2000/svg&apos; width=&apos;640&apos; height=&apos;480&apos;><rect width=&apos;100%25&apos; height=&apos;100%25&apos; fill=&apos;%23f2f2f2&apos;/><text x=&apos;50%25&apos; y=&apos;50%25&apos; dominant-baseline=&apos;middle&apos; text-anchor=&apos;middle&apos; fill=&apos;%23999&apos; font-size=&apos;24&apos;>暂无图片</text></svg>'">
+                        {% else %}
+                        <img src="data:image/svg+xml;utf8,<svg xmlns=&apos;http://www.w3.org/2000/svg&apos; width=&apos;640&apos; height=&apos;480&apos;><rect width=&apos;100%25&apos; height=&apos;100%25&apos; fill=&apos;%23f2f2f2&apos;/><text x=&apos;50%25&apos; y=&apos;50%25&apos; dominant-baseline=&apos;middle&apos; text-anchor=&apos;middle&apos; fill=&apos;%23999&apos; font-size=&apos;24&apos;>暂无图片</text></svg>" class="card-img-top" alt="{{ artifact.name }}">
+                        {% endif %}
+                    </a>
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <a href="{% url 'artifact_detail' artifact.slug %}" class="text-decoration-none text-dark">{{ artifact.name }}</a>
+                        </h5>
+                        <p class="card-text text-muted small">
+                            <i class="bi bi-tag"></i> {{ artifact.category.name }} | 
+                            <i class="bi bi-clock"></i> {{ artifact.era_display }}
+                        </p>
+                        {% if artifact.color %}
+                        <p class="card-text small">
+                            <i class="bi bi-palette"></i> {{ artifact.color }}
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- 分页 -->
+        {% if page_obj.has_other_pages %}
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if current_search %}&search={{ current_search }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}{% if current_era %}&era={{ current_era }}{% endif %}{% if current_color %}&color={{ current_color }}{% endif %}{% if current_exhibition %}&exhibition={{ current_exhibition }}{% endif %}">
+                        <i class="bi bi-chevron-double-left"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if current_search %}&search={{ current_search }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}{% if current_era %}&era={{ current_era }}{% endif %}{% if current_color %}&color={{ current_color }}{% endif %}{% if current_exhibition %}&exhibition={{ current_exhibition }}{% endif %}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+
+                <li class="page-item active">
+                    <span class="page-link">{{ page_obj.number }}</span>
+                </li>
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if current_search %}&search={{ current_search }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}{% if current_era %}&era={{ current_era }}{% endif %}{% if current_color %}&color={{ current_color }}{% endif %}{% if current_exhibition %}&exhibition={{ current_exhibition }}{% endif %}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if current_search %}&search={{ current_search }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}{% if current_era %}&era={{ current_era }}{% endif %}{% if current_color %}&color={{ current_color }}{% endif %}{% if current_exhibition %}&exhibition={{ current_exhibition }}{% endif %}">
+                        <i class="bi bi-chevron-double-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        <div class="text-center text-muted">
+            共 {{ page_obj.paginator.count }} 件文物，第 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 页
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-inbox display-4"></i>
+            <h4>暂无文物数据</h4>
+            <p>请尝试调整筛选条件或添加文物数据</p>
+            <a href="{% url 'artifact_list' %}" class="btn btn-primary">
+                <i class="bi bi-arrow-repeat"></i> 清除筛选
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

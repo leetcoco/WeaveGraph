@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block title %}个人中心 - 文物色彩探索平台{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card shadow mb-4">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-person-circle display-4"></i>
+                    </div>
+                    <h5 class="card-title">{{ request.user.username }}</h5>
+                    <p class="card-text text-muted">{{ request.user.email }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-9">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white py-3">
+                    <h5 class="mb-0"><i class="bi bi-person"></i> 个人中心</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">用户名：</label>
+                            <span>{{ request.user.username }}</span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">邮箱：</label>
+                            <span>{{ request.user.email }}</span>
+                        </div>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">注册时间：</label>
+                            <span>{{ request.user.date_joined|date:"Y年m月d日" }}</span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">最后登录：</label>
+                            <span>{{ request.user.last_login|date:"Y年m月d日 H:i" }}</span>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <h6 class="mb-3">快捷操作</h6>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <a href="{% url 'artifact_list' %}" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-grid"></i> 浏览文物
+                            </a>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <button class="btn btn-outline-secondary w-100" disabled>
+                                <i class="bi bi-heart"></i> 我的收藏
+                            </button>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <button class="btn btn-outline-secondary w-100" disabled>
+                                <i class="bi bi-clock-history"></i> 浏览历史
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <a href="{% url 'logout' %}" class="btn btn-danger">
+                            <i class="bi bi-box-arrow-right"></i> 退出登录
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

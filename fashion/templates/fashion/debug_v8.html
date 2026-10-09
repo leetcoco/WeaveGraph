@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>V8调试页面</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        h1 {
+            color: #2C3E50;
+            border-bottom: 3px solid #8B0000;
+            padding-bottom: 10px;
+            text-align: center;
+        }
+        .canvas-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .canvas-wrapper {
+            text-align: center;
+        }
+        canvas {
+            border: 3px solid #333;
+            background: white;
+        }
+        .label {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .log {
+            background: #2d2d2d;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 20px 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 16px;
+            background: #8B0000;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 V8映射调试页面</h1>
+        
+        <div id="status"></div>
+        
+        <div class="canvas-grid">
+            <div class="canvas-wrapper">
+                <canvas id="garmentCanvas" width="256" height="256"></canvas>
+                <div class="label">1. 原始服装</div>
+            </div>
+            <div class="canvas-wrapper">
+                <canvas id="maskCanvas" width="256" height="256"></canvas>
+                <div class="label">2. V8 Mask</div>
+            </div>
+            <div class="canvas-wrapper">
+                <canvas id="paintingCanvas" width="256" height="256"></canvas>
+                <div class="label">3. 原始画作</div>
+            </div>
+            <div class="canvas-wrapper">
+                <canvas id="resultCanvas" width="512" height="512"></canvas>
+                <div class="label">4. V8映射结果 ⭐</div>
+            </div>
+        </div>
+        
+        <button onclick="testV8Mapping()">运行V8映射测试</button>
+        
+        <div class="log" id="log">等待测试...</div>
+    </div>
+
+    <script>
+        // 直接从design.html复制V8核心函数
+        function detectCanny(grayData, width, height, lowThreshold, highThreshold) {
+            const sobelX = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
+            const sobelY = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
+            const gx = new Int32Array(width * height);
+            const gy = new Int32Array(width * height);
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    let gxi = 0, gyi = 0;
+                    for (let ky = -1; ky <= 1; ky++) {
+                        for (let kx = -1; kx <= 1; kx++) {
+                            const idx = (y + ky) * width + (x + kx);
+                            gxi += grayData[idx] * sobelX[(ky + 1) * 3 + (kx + 1)];
+                            gyi += grayData[idx] * sobelY[(ky + 1) * 3 + (kx + 1)];
+                        }
+                    }
+                    const idx = y * width + x;
+                    gx[idx] = gxi;
+                    gy[idx] = gyi;
+                }
+            }
+            const magnitude = new Float32Array(width * height);
+            for (let i = 0; i < width * height; i++) {
+                magnitude[i] = Math.sqrt(gx[i] * gx[i] + gy[i] * gy[i]);
+            }
+            const edges = new Uint8ClampedArray(width * height);
+            for (let i = 0; i < width * height; i++) {
+                edges[i] = magnitude[i] > highThreshold ? 255 : 0;
+            }
+            return edges;
+        }
+        
+        function dilate(data, width, height, kernelSize, iterations) {
+            let result = new Uint8ClampedArray(data);
+            for (let iter = 0; iter < iterations; iter++) {
+                const temp = new Uint8ClampedArray(result);
+                const offset = Math.floor(kernelSize / 2);
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        let maxVal = 0;
+                        for (let ky = -offset; ky <= offset; ky++) {
+                            for (let kx = -offset; kx <= offset; kx++) {
+                                const nx = x + kx;
+                                const ny = y + ky;
+                                if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                                    const idx = ny * width + nx;
+                                    maxVal = Math.max(maxVal, temp[idx]);
+                                }
+                            }
+                        }
+                        result[y * width + x] = maxVal;
+                    }
+                }
+            }
+            return result;
+        }
+        
+        function gaussianBlur3x3(data, width, height) {
+            const kernel = [
+                [0.239, 0.242, 0.239],
+                [0.242, 0.254, 0.242],
+                [0.239, 0.242, 0.239]
+            ];
+            const result = new Uint8ClampedArray(data.length);
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    let sum = 0;
+                    for (let ky = -1; ky <= 1; ky++) {
+                        for (let kx = -1; kx <= 1; kx++) {
+                            const nx = x + kx;
+                            const ny = y + ky;
+                            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                                const idx = ny * width + nx;
+                                sum += data[idx] * kernel[ky + 1][kx + 1];
+                            }
+                        }
+                    }
+                    result[y * width + x] = Math.round(sum);
+                }
+            }
+            return result;
+        }
+        
+        function findContours(binaryData, width, height) {
+            const contours = [];
+            const visited = new Uint8ClampedArray(width * height);
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const idx = y * width + x;
+                    if (binaryData[idx] > 128 && visited[idx] === 0) {
+                        const contour = traceContour(binaryData, visited, x, y, width, height);
+                        if (contour.length > 5) {
+                            contours.push(contour);
+                        }
+                    }
+                }
+            }
+            return contours;
+        }
+        
+        function traceContour(binaryData, visited, startX, startY, width, height) {
+            const contour = [];
+            const stack = [{x: startX, y: startY}];
+            while (stack.length > 0) {
+                const point = stack.pop();
+                const idx = point.y * width + point.x;
+                if (visited[idx] === 1) continue;
+                if (binaryData[idx] <= 128) continue;
+                visited[idx] = 1;
+                contour.push({x: point.x, y: point.y});
+                const neighbors = [
+                    {x: point.x + 1, y: point.y},
+                    {x: point.x - 1, y: point.y},
+                    {x: point.x, y: point.y + 1},
+                    {x: point.x, y: point.y - 1}
+                ];
+                for (const n of neighbors) {
+                    if (n.x >= 0 && n.x < width && n.y >= 0 && n.y < height) {
+                        stack.push(n);
+                    }
+                }
+            }
+            return contour;
+        }
+        
+        function calculateContourArea(contour) {
+            if (contour.length < 3) return 0;
+            let area = 0;
+            const n = contour.length;
+            for (let i = 0; i < n; i++) {
+                const j = (i + 1) % n;
+                area += contour[i].x * contour[j].y;
+                area -= contour[j].x * contour[i].y;
+            }
+            return Math.abs(area) / 2;
+        }
+        
+        function createGarmentMaskV8(imageData, width, height) {
+            addLog('开始创建V8 Mask...');
+            const grayData = new Uint8ClampedArray(width * height);
+            for (let i = 0; i < imageData.data.length; i += 4) {
+                grayData[i / 4] = Math.round(0.299 * imageData.data[i] + 0.587 * imageData.data[i + 1] + 0.114 * imageData.data[i + 2]);
+            }
+            const edges = detectCanny(grayData, width, height, 50, 120);
+            addLog('Canny边缘检测完成');
+            const dilated = dilate(edges, width, height, 3, 1);
+            addLog('膨胀完成（轻微）');
+            const contours = findContours(dilated, width, height);
+            addLog(`找到${contours.length}个轮廓`);
+            if (contours.length === 0) {
+                return new Uint8ClampedArray(width * height).fill(255);
+            }
+            const areas = contours.map(c => calculateContourArea(c));
+            const maxArea = Math.max(...areas);
+            const threshold = maxArea * 0.4;
+            addLog(`轮廓过滤阈值: ${threshold}`);
+            const validContours = contours
+                .filter((c, i) => areas[i] > threshold)
+                .sort((a, b) => calculateContourArea(b) - calculateContourArea(a))
+                .slice(0, 2);
+            addLog(`保留${validContours.length}个主要轮廓`);
+            const mask = new Uint8ClampedArray(width * height).fill(0);
+            for (const contour of validContours) {
+                for (const point of contour) {
+                    const idx = point.y * width + point.x;
+                    mask[idx] = 255;
+                }
+            }
+            const blurredMask = gaussianBlur3x3(mask, width, height);
+            addLog('极小羽化完成（3×3, σ=0.5）');
+            return blurredMask;
+        }
+        
+        function getMaskBounds(mask, width, height) {
+            let minX = width, minY = height, maxX = 0, maxY = 0;
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const idx = y * width + x;
+                    if (mask[idx] > 64) {
+                        if (x < minX) minX = x;
+                        if (x > maxX) maxX = x;
+                        if (y < minY) minY = y;
+                        if (y > maxY) maxY = y;
+                    }
+                }
+            }
+            if (minX === width) {
+                return { x: 0, y: 0, w: width, h: height };
+            }
+            return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+        }
+        
+        function calculateCoverage(mask, width, height) {
+            let count = 0;
+            for (let i = 0; i < width * height; i++) {
+                if (mask[i] > 64) count++;
+            }
+            return ((count / (width * height)) * 100).toFixed(1);
+        }
+        
+        function detectEdges(imageData, width, height, lowThreshold, highThreshold) {
+            const data = imageData.data;
+            const grayData = new Uint8ClampedArray(width * height);
+            for (let i = 0; i < data.length; i += 4) {
+                grayData[i / 4] = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+            }
+            const sobelX = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
+            const sobelY = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
+            const gx = new Int32Array(width * height);
+            const gy = new Int32Array(width * height);
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    let gxi = 0, gyi = 0;
+                    for (let ky = -1; ky <= 1; ky++) {
+                        for (let kx = -1; kx <= 1; kx++) {
+                            const idx = (y + ky) * width + (x + kx);
+                            gxi += grayData[idx] * sobelX[(ky + 1) * 3 + (kx + 1)];
+                            gyi += grayData[idx] * sobelY[(ky + 1) * 3 + (kx + 1)];
+                        }
+                    }
+                    const idx = y * width + x;
+                    gx[idx] = gxi;
+                    gy[idx] = gyi;
+                }
+            }
+            const magnitude = new Float32Array(width * height);
+            for (let i = 0; i < width * height; i++) {
+                magnitude[i] = Math.sqrt(gx[i] * gx[i] + gy[i] * gy[i]);
+            }
+            const edges = new Uint8ClampedArray(width * height);
+            for (let i = 0; i < width * height; i++) {
+                edges[i] = magnitude[i] > highThreshold ? 255 : 0;
+            }
+            return edges;
+        }
+        
+        function calculateOtsuThreshold(imageData) {
+            const data = imageData.data;
+            const histogram = new Array(256).fill(0);
+            for (let i = 0; i < data.length; i += 4) {
+                const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+                histogram[gray]++;
+            }
+            let maxVariance = 0;
+            let optimalThreshold = 128;
+            for (let t = 0; t < 256; t++) {
+                let w0 = 0, w1 = 0, u0 = 0, u1 = 0;
+                for (let i = 0; i <= t; i++) {
+                    w0 += histogram[i];
+                    u0 += i * histogram[i];
+                }
+                for (let i = t + 1; i < 256; i++) {
+                    w1 += histogram[i];
+                    u1 += i * histogram[i];
+                }
+                if (w0 === 0 || w1 === 0) continue;
+                u0 /= w0;
+                u1 /= w1;
+                const variance = w0 * w1 * Math.pow(u0 - u1, 2);
+                if (variance > maxVariance) {
+                    maxVariance = variance;
+                    optimalThreshold = t;
+                }
+            }
+            return optimalThreshold;
+        }
+        
+        function applyThreshold(imageData, threshold) {
+            const result = new Uint8ClampedArray(imageData.data.length / 4);
+            const data = imageData.data;
+            for (let i = 0, j = 0; i < data.length; i += 4, j++) {
+                const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+                result[j] = gray > threshold ? 255 : 0;
+            }
+            return result;
+        }
+        
+        function getContourBounds(contour) {
+            if (contour.length === 0) {
+                return { x: 0, y: 0, w: 0, h: 0 };
+            }
+            let minX = contour[0].x, minY = contour[0].y;
+            let maxX = minX, maxY = minY;
+            for (const point of contour) {
+                if (point.x < minX) minX = point.x;
+                if (point.x > maxX) maxX = point.x;
+                if (point.y < minY) minY = point.y;
+                if (point.y > maxY) maxY = point.y;
+            }
+            return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+        }
+        
+        function extractArtifactSubjectV8(artifactCtx, width, height) {
+            addLog('提取画作主体...');
+            const imageData = artifactCtx.getImageData(0, 0, width, height);
+            const edges = detectEdges(imageData, width, height, 30, 100);
+            const threshold = calculateOtsuThreshold(imageData);
+            const thresholded = applyThreshold(imageData, threshold);
+            const saliency = new Uint8ClampedArray(width * height);
+            for (let i = 0; i < width * height; i++) {
+                saliency[i] = 255 - thresholded[i];
+            }
+            const combined = new Uint8ClampedArray(width * height);
+            for (let i = 0; i < width * height; i++) {
+                combined[i] = Math.max(edges[i], saliency[i]);
+            }
+            const dilated = dilate(combined, width, height, 5, 2);
+            const contours = findContours(dilated, width, height);
+            if (contours.length === 0) {
+                return { x: 0, y: 0, w: width, h: height };
+            }
+            const maxContour = contours.reduce((max, c) => {
+                const area = calculateContourArea(c);
+                return area > calculateContourArea(max) ? c : max;
+            }, contours[0]);
+            const bounds = getContourBounds(maxContour);
+            const padding = 0.05;
+            const padX = Math.round(bounds.w * padding);
+            const padY = Math.round(bounds.h * padding);
+            return {
+                x: Math.max(0, bounds.x - padX),
+                y: Math.max(0, bounds.y - padY),
+                w: Math.min(width - bounds.x + padX, bounds.w + 2 * padX),
+                h: Math.min(height - bounds.y + padY, bounds.h + 2 * padY)
+            };
+        }
+        
+        function mapArtifactToGarmentV8(artifactCtx, garmentMask, canvasWidth, canvasHeight) {
+            addLog('开始V8精确映射...');
+            const width = 256;
+            const height = 256;
+            const subject = extractArtifactSubjectV8(artifactCtx, width, height);
+            const maskBounds = getMaskBounds(garmentMask, width, height);
+            const maxSide = Math.max(maskBounds.w, maskBounds.h);
+            const artifactMaxSide = Math.max(subject.w, subject.h);
+            const scale = (maxSide / artifactMaxSide) * 1.02;
+            addLog(`缩放倍数: ${scale.toFixed(3)} (V8: 1.02)`);
+            const newW = Math.round(subject.w * scale);
+            const newH = Math.round(subject.h * scale);
+            const resultCanvas = document.createElement('canvas');
+            resultCanvas.width = width;
+            resultCanvas.height = height;
+            const resultCtx = resultCanvas.getContext('2d');
+            resultCtx.fillStyle = '#FFFFFF';
+            resultCtx.fillRect(0, 0, width, height);
+            const startX = maskBounds.x + Math.round((maskBounds.w - newW) / 2);
+            const startY = maskBounds.y + Math.round((maskBounds.h - newH) / 2);
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = newW;
+            tempCanvas.height = newH;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.imageSmoothingEnabled = true;
+            tempCtx.imageSmoothingQuality = 'high';
+            tempCtx.drawImage(artifactCtx.canvas, subject.x, subject.y, subject.w, subject.h, 0, 0, newW, newH);
+            addLog(`映射尺寸: ${newW}x${newH}, 位置: (${startX}, ${startY})`);
+            let mappedPixels = 0;
+            for (let y = 0; y < newH; y++) {
+                for (let x = 0; x < newW; x++) {
+                    const resultY = startY + y;
+                    const resultX = startX + x;
+                    if (resultY >= 0 && resultY < height && resultX >= 0 && resultX < width) {
+                        const maskIdx = resultY * width + resultX;
+                        if (garmentMask[maskIdx] > 25) {
+                            const pixel = tempCtx.getImageData(x, y, 1, 1).data;
+                            resultCtx.fillStyle = `rgba(${pixel[0]}, ${pixel[1]}, ${pixel[2]}, ${pixel[3] / 255})`;
+                            resultCtx.fillRect(resultX, resultY, 1, 1);
+                            mappedPixels++;
+                        }
+                    }
+                }
+            }
+            addLog(`成功映射${mappedPixels}个像素`);
+            const coverage = calculateCoverage(garmentMask, width, height);
+            addLog(`Mask覆盖率: ${coverage}%`);
+            return { canvas: resultCanvas, coverage: coverage };
+        }
+        
+        function addLog(message) {
+            const logDiv = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${time}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function updateStatus(success, message) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = 'status ' + (success ? 'success' : 'error');
+            statusDiv.innerHTML = (success ? '✅ ' : '❌ ') + message;
+        }
+        
+        async function testV8Mapping() {
+            addLog('========== 开始V8映射测试 ==========');
+            updateStatus(true, '正在测试V8映射...');
+            
+            try {
+                const garmentImg = new Image();
+                garmentImg.crossOrigin = 'anonymous';
+                garmentImg.src = '/static/downloads/宋褙子（男）.png';
+                
+                await new Promise((resolve, reject) => {
+                    garmentImg.onload = () => {
+                        addLog('✓ 服装图片加载成功');
+                        const garmentCanvas = document.getElementById('garmentCanvas');
+                        const garmentCtx = garmentCanvas.getContext('2d');
+                        garmentCtx.drawImage(garmentImg, 0, 0, 256, 256);
+                        
+                        const paintingImg = new Image();
+                        paintingImg.crossOrigin = 'anonymous';
+                        paintingImg.src = '/static/paintings/Harvard/Harvard/harvard_0.jpg';
+                        
+                        paintingImg.onload = () => {
+                            addLog('✓ 画作图片加载成功');
+                            const paintingCanvas = document.getElementById('paintingCanvas');
+                            const paintingCtx = paintingCanvas.getContext('2d');
+                            paintingCtx.drawImage(paintingImg, 0, 0, 256, 256);
+                            
+                            const garmentImageData = garmentCtx.getImageData(0, 0, 256, 256);
+                            const garmentMask = createGarmentMaskV8(garmentImageData, 256, 256);
+                            
+                            const maskCanvas = document.getElementById('maskCanvas');
+                            const maskCtx = maskCanvas.getContext('2d');
+                            const maskImageData = maskCtx.createImageData(256, 256);
+                            for (let i = 0; i < garmentMask.length; i++) {
+                                const val = garmentMask[i];
+                                maskImageData.data[i * 4] = val;
+                                maskImageData.data[i * 4 + 1] = val;
+                                maskImageData.data[i * 4 + 2] = val;
+                                maskImageData.data[i * 4 + 3] = 255;
+                            }
+                            maskCtx.putImageData(maskImageData, 0, 0);
+                            
+                            const result = mapArtifactToGarmentV8(paintingCtx, garmentMask, 256, 256);
+                            
+                            const resultCanvasEl = document.getElementById('resultCanvas');
+                            const resultCtx = resultCanvasEl.getContext('2d');
+                            resultCtx.drawImage(result.canvas, 0, 0, 512, 512);
+                            
+                            updateStatus(true, `V8映射完成！覆盖率：${result.coverage}%`);
+                            addLog('========== V8映射测试成功 ==========');
+                        };
+                        
+                        paintingImg.onerror = () => {
+                            addLog('✗ 画作图片加载失败');
+                            updateStatus(false, '画作图片加载失败');
+                        };
+                    };
+                    
+                    garmentImg.onerror = () => {
+                        addLog('✗ 服装图片加载失败');
+                        updateStatus(false, '服装图片加载失败');
+                    };
+                });
+            } catch (error) {
+                addLog('✗ 发生错误: ' + error.message);
+                updateStatus(false, '发生错误: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

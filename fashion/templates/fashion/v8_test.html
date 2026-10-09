@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>V8精确边界控制映射测试</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2C3E50;
+            border-bottom: 3px solid #8B0000;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2C3E50;
+            margin-bottom: 15px;
+        }
+        .canvas-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+        .canvas-wrapper {
+            text-align: center;
+        }
+        canvas {
+            border: 2px solid #333;
+            background: white;
+            margin: 10px;
+        }
+        .canvas-label {
+            margin-top: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        select, button {
+            padding: 10px 20px;
+            font-size: 14px;
+            margin: 5px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        button {
+            background: #8B0000;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #a00000;
+        }
+        .stats {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 4px;
+        }
+        .stat-item {
+            margin: 5px 0;
+        }
+        .highlight {
+            color: #8B0000;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 V8精确边界控制映射测试</h1>
+        
+        <div class="test-section">
+            <div class="section-title">选择画作和服装</div>
+            <select id="painting-select">
+                <option value="">请选择画作...</option>
+            </select>
+            <select id="garment-select">
+                <option value="">请选择服装...</option>
+                <option value="polo衫.png">polo衫.png</option>
+                <option value="T恤.png">T恤.png</option>
+                <option value="交领短袄（汉）.png">交领短袄（汉）.png</option>
+                <option value="宋褙子（女）.png">宋褙子（女）.png</option>
+                <option value="宋褙子（男）.png">宋褙子（男）.png</option>
+                <option value="旗袍.png">旗袍.png</option>
+                <option value="马面裙.png">马面裙.png</option>
+            </select>
+            <button onclick="runV8Mapping()">运行V8映射</button>
+        </div>
+
+        <div class="test-section">
+            <div class="section-title">V8映射结果展示</div>
+            <div class="canvas-container">
+                <div class="canvas-wrapper">
+                    <canvas id="original-garment" width="256" height="256"></canvas>
+                    <div class="canvas-label">原始服装</div>
+                </div>
+                <div class="canvas-wrapper">
+                    <canvas id="garment-mask" width="256" height="256"></canvas>
+                    <div class="canvas-label">服装Mask</div>
+                </div>
+                <div class="canvas-wrapper">
+                    <canvas id="original-painting" width="256" height="256"></canvas>
+                    <div class="canvas-label">原始画作</div>
+                </div>
+                <div class="canvas-wrapper">
+                    <canvas id="v8-result" width="256" height="256"></canvas>
+                    <div class="canvas-label">V8映射结果 ⭐</div>
+                </div>
+            </div>
+            
+            <div class="stats" id="stats">
+                <div class="stat-item">等待测试...</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <div class="section-title">批量测试（所有画作×所有服装）</div>
+            <button onclick="runBatchTest()">批量测试50幅画×7件服装</button>
+            <div id="batch-results"></div>
+        </div>
+    </div>
+
+    <script>
+        // ============ V8精确边界控制映射系统 ============
+        
+        // Canny边缘检测
+        function detectCanny(grayData, width, height, lowThreshold, highThreshold) {
+            const sobelX = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
+            const sobelY = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
+            
+            const gx = new Int32Array(width * height);
+            const gy = new Int32Array(width * height);
+            
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    let gxi = 0, gyi = 0;
+                    
+                    for (let ky = -1; ky <= 1; ky++) {
+                        for (let kx = -1; kx <= 1; kx++) {
+                            const idx = (y + ky) * width + (x + kx);
+                            gxi += grayData[idx] * sobelX[(ky + 1) * 3 + (kx + 1)];
+                            gyi += grayData[idx] * sobelY[(ky + 1) * 3 + (kx + 1)];
+                        }
+                    }
+                    
+                    const idx = y * width + x;
+                    gx[idx] = gxi;
+                    gy[idx] = gyi;
+                }
+            }
+            
+            const magnitude = new Float32Array(width * height);
+            for (let i = 0; i < width * height; i++) {
+                magnitude[i] = Math.sqrt(gx[i] * gx[i] + gy[i] * gy[i]);
+            }
+            
+            const edges = new Uint8ClampedArray(width * height);
+            for (let i = 0; i < width * height; i++) {
+                edges[i] = magnitude[i] > highThreshold ? 255 : 0;
+            }
+            
+            return edges;
+        }
+        
+        // 轻微膨胀
+        function dilate(data, width, height, kernelSize, iterations) {
+            let result = new Uint8ClampedArray(data);
+            
+            for (let iter = 0; iter < iterations; iter++) {
+                const temp = new Uint8ClampedArray(result);
+                const offset = Math.floor(kernelSize / 2);
+                
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        let maxVal = 0;
+                        
+                        for (let ky = -offset; ky <= offset; ky++) {
+                            for (let kx = -offset; kx <= offset; kx++) {
+                                const nx = x + kx;
+                                const ny = y + ky;
+                                
+                                if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                                    const idx = ny * width + nx;
+                                    maxVal = Math.max(maxVal, temp[idx]);
+                                }
+                            }
+                        }
+                        
+                        result[y * width + x] = maxVal;
+                    }
+                }
+            }
+            
+            return result;
+        }
+        
+        // V8核心：极小羽化 - 3×3核，保持圆领等细节
+        function gaussianBlur3x3(data, width, height) {
+            const sigma = 0.5; // 极小模糊
+            const kernel = [
+                [0.239, 0.242, 0.239],
+                [0.242, 0.254, 0.242],
+                [0.239, 0.242, 0.239]
+            ];
+            const result = new Uint8ClampedArray(data.length);
+            
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    let sum = 0;
+                    
+                    for (let ky = -1; ky <= 1; ky++) {
+                        for (let kx = -1; kx <= 1; kx++) {
+                            const nx = x + kx;
+                            const ny = y + ky;
+                            
+                            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                                const idx = ny * width + nx;
+                                sum += data[idx] * kernel[ky + 1][kx + 1];
+                            }
+                        }
+                    }
+                    
+                    result[y * width + x] = Math.round(sum);
+                }
+            }
+            
+            return result;
+        }
+        
+        // 查找简单轮廓
+        function findContours(binaryData, width, height) {
+            const contours = [];
+            const visited = new Uint8ClampedArray(width * height);
+            
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const idx = y * width + x;
+                    if (binaryData[idx] > 128 && visited[idx] === 0) {
+                        const contour = traceContour(binaryData, visited, x, y, width, height);
+                        if (contour.length > 5) {
+                            contours.push(contour);
+                        }
+                    }
+                }
+            }
+            
+            return contours;
+        }
+        
+        // 追踪轮廓
+        function traceContour(binaryData, visited, startX, startY, width, height) {
+            const contour = [];
+            const stack = [{x: startX, y: startY}];
+            
+            while (stack.length > 0) {
+                const point = stack.pop();
+                const idx = point.y * width + point.x;
+                
+                if (visited[idx] === 1) continue;
+                if (binaryData[idx] <= 128) continue;
+                
+                visited[idx] = 1;
+                contour.push({x: point.x, y: point.y});
+                
+                const neighbors = [
+                    {x: point.x + 1, y: point.y},
+                    {x: point.x - 1, y: point.y},
+                    {x: point.x, y: point.y + 1},
+                    {x: point.x, y: point.y - 1}
+                ];
+                
+                for (const n of neighbors) {
+                    if (n.x >= 0 && n.x < width && n.y >= 0 && n.y < height) {
+                        stack.push(n);
+                    }
+                }
+            }
+            
+            return contour;
+        }
+        
+        // 计算轮廓面积
+        function calculateContourArea(contour) {
+            if (contour.length < 3) return 0;
+            
+            let area = 0;
+            const n = contour.length;
+            
+            for (let i = 0; i < n; i++) {
+                const j = (i + 1) % n;
+                area += contour[i].x * contour[j].y;
+                area -= contour[j].x * contour[i].y;
+            }
+            
+            return Math.abs(area) / 2;
+        }
+        
+        // V8核心：创建服装mask - 精确边界控制
+        function createGarmentMaskV8(imageData, width, height) {
+            // 1. 转换为灰度
+            const grayData = new Uint8ClampedArray(width * height);
+            for (let i = 0; i < imageData.data.length; i += 4) {
+                const r = imageData.data[i];
+                const g = imageData.data[i + 1];
+                const b = imageData.data[i + 2];
+                grayData[i / 4] = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+            }
+            
+            // 2. Canny边缘检测
+            const edges = detectCanny(grayData, width, height, 50, 120);
+            
+            // 3. 轻微膨胀连接
+            const dilated = dilate(edges, width, height, 3, 1);
+            
+            // 4. 查找轮廓
+            const contours = findContours(dilated, width, height);
+            
+            if (contours.length === 0) {
+                return new Uint8ClampedArray(width * height).fill(255);
+            }
+            
+            // 5. V8改进：只保留面积 > 最大面积40%的轮廓
+            const areas = contours.map(c => calculateContourArea(c));
+            const maxArea = Math.max(...areas);
+            const threshold = maxArea * 0.4;
+            
+            const validContours = contours
+                .filter((c, i) => areas[i] > threshold)
+                .sort((a, b) => calculateContourArea(b) - calculateContourArea(a))
+                .slice(0, 2); // 只保留前2个最大轮廓
+            
+            // 6. 创建mask
+            const mask = new Uint8ClampedArray(width * height).fill(0);
+            
+            for (const contour of validContours) {
+                for (const point of contour) {
+                    const idx = point.y * width + point.x;
+                    mask[idx] = 255;
+                }
+            }
+            
+            // 7. V8关键改进：极小羽化 - 3×3核，保持圆领等细节
+            const blurredMask = gaussianBlur3x3(mask, width, height);
+            
+            return blurredMask;
+        }
+        
+        // 计算mask边界框
+        function getMaskBounds(mask, width, height) {
+            let minX = width, minY = height, maxX = 0, maxY = 0;
+            
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const idx = y * width + x;
+                    if (mask[idx] > 64) {
+                        if (x < minX) minX = x;
+                        if (x > maxX) maxX = x;
+                        if (y < minY) minY = y;
+                        if (y > maxY) maxY = y;
+                    }
+                }
+            }
+            
+            if (minX === width) {
+                return { x: 0, y: 0, w: width, h: height };
+            }
+            
+            return {
+                x: minX,
+                y: minY,
+                w: maxX - minX + 1,
+                h: maxY - minY + 1
+            };
+        }
+        
+        // V8核心：画作主体提取
+        function extractArtifactSubjectV8(artifactCtx, width, height) {
+            const imageData = artifactCtx.getImageData(0, 0, width, height);
+            
+            // 1. 边缘检测
+            const edges = detectEdges(imageData, width, height, 30, 100);
+            
+            // 2. Otsu阈值分割
+            const threshold = calculateOtsuThreshold(imageData);
+            const thresholded = applyThreshold(imageData, threshold);
+            
+            // 3. 显著性（反色）
+            const saliency = new Uint8ClampedArray(width * height);
+            for (let i = 0; i < width * height; i++) {
+                saliency[i] = 255 - thresholded[i];
+            }
+            
+            // 4. 组合边缘和显著
+            const combined = new Uint8ClampedArray(width * height);
+            for (let i = 0; i < width * height; i++) {
+                combined[i] = Math.max(edges[i], saliency[i]);
+            }
+            
+            // 5. 轻微膨胀连接
+            const dilated = dilate(combined, width, height, 5, 2);
+            
+            // 6. 查找最大轮廓
+            const contours = findContours(dilated, width, height);
+            
+            if (contours.length === 0) {
+                return { x: 0, y: 0, w: width, h: height };
+            }
+            
+            const maxContour = contours.reduce((max, c) => {
+                const area = calculateContourArea(c);
+                return area > calculateContourArea(max) ? c : max;
+            }, contours[0]);
+            
+            const bounds = getContourBounds(maxContour);
+            
+            // 7. 添加5% padding
+            const padding = 0.05;
+            const padX = Math.round(bounds.w * padding);
+            const padY = Math.round(bounds.h * padding);
+            
+            return {
+                x: Math.max(0, bounds.x - padX),
+                y: Math.max(0, bounds.y - padY),
+                w: Math.min(width - bounds.x + padX, bounds.w + 2 * padX),
+                h: Math.min(height - bounds.y + padY, bounds.h + 2 * padY)
+            };
+        }
+        
+        // 边缘检测
+        function detectEdges(imageData, width, height, lowThreshold, highThreshold) {
+            const data = imageData.data;
+            const grayData = new Uint8ClampedArray(width * height);
+            
+            for (let i = 0; i < data.length; i += 4) {
+                grayData[i / 4] = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+            }
+            
+            const sobelX = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
+            const sobelY = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
+            
+            const gx = new Int32Array(width * height);
+            const gy = new Int32Array(width * height);
+            
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    let gxi = 0, gyi = 0;
+                    
+                    for (let ky = -1; ky <= 1; ky++) {
+                        for (let kx = -1; kx <= 1; kx++) {
+                            const idx = (y + ky) * width + (x + kx);
+                            gxi += grayData[idx] * sobelX[(ky + 1) * 3 + (kx + 1)];
+                            gyi += grayData[idx] * sobelY[(ky + 1) * 3 + (kx + 1)];
+                        }
+                    }
+                    
+                    const idx = y * width + x;
+                    gx[idx] = gxi;
+                    gy[idx] = gyi;
+                }
+            }
+            
+            const magnitude = new Float32Array(width * height);
+            for (let i = 0; i < width * height; i++) {
+                magnitude[i] = Math.sqrt(gx[i] * gx[i] + gy[i] * gy[i]);
+            }
+            
+            const edges = new Uint8ClampedArray(width * height);
+            for (let i = 0; i < width * height; i++) {
+                edges[i] = magnitude[i] > highThreshold ? 255 : 0;
+            }
+            
+            return edges;
+        }
+        
+        // Otsu阈值计算
+        function calculateOtsuThreshold(imageData) {
+            const data = imageData.data;
+            const histogram = new Array(256).fill(0);
+            
+            for (let i = 0; i < data.length; i += 4) {
+                const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+                histogram[gray]++;
+            }
+            
+            let maxVariance = 0;
+            let optimalThreshold = 128;
+            
+            for (let t = 0; t < 256; t++) {
+                let w0 = 0, w1 = 0, u0 = 0, u1 = 0;
+                
+                for (let i = 0; i <= t; i++) {
+                    w0 += histogram[i];
+                    u0 += i * histogram[i];
+                }
+                
+                for (let i = t + 1; i < 256; i++) {
+                    w1 += histogram[i];
+                    u1 += i * histogram[i];
+                }
+                
+                if (w0 === 0 || w1 === 0) continue;
+                
+                u0 /= w0;
+                u1 /= w1;
+                
+                const variance = w0 * w1 * Math.pow(u0 - u1, 2);
+                if (variance > maxVariance) {
+                    maxVariance = variance;
+                    optimalThreshold = t;
+                }
+            }
+            
+            return optimalThreshold;
+        }
+        
+        // 应用阈值
+        function applyThreshold(imageData, threshold) {
+            const result = new Uint8ClampedArray(imageData.data.length / 4);
+            const data = imageData.data;
+            
+            for (let i = 0, j = 0; i < data.length; i += 4, j++) {
+                const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+                result[j] = gray > threshold ? 255 : 0;
+            }
+            
+            return result;
+        }
+        
+        // 获取轮廓边界
+        function getContourBounds(contour) {
+            if (contour.length === 0) {
+                return { x: 0, y: 0, w: 0, h: 0 };
+            }
+            
+            let minX = contour[0].x, minY = contour[0].y;
+            let maxX = minX, maxY = minY;
+            
+            for (const point of contour) {
+                if (point.x < minX) minX = point.x;
+                if (point.x > maxX) maxX = point.x;
+                if (point.y < minY) minY = point.y;
+                if (point.y > maxY) maxY = point.y;
+            }
+            
+            return {
+                x: minX,
+                y: minY,
+                w: maxX - minX + 1,
+                h: maxY - minY + 1
+            };
+        }
+        
+        // V8核心：精确缩放映射
+        function mapArtifactToGarmentV8(artifactCtx, garmentMask, canvasWidth, canvasHeight) {
+            const width = 256;
+            const height = 256;
+            
+            // 1. 提取画作主体
+            const subject = extractArtifactSubjectV8(artifactCtx, width, height);
+            
+            // 2. 计算mask边界框
+            const maskBounds = getMaskBounds(garmentMask, width, height);
+            
+            // 3. V8改进：精确缩放 (1.02倍)
+            const maxSide = Math.max(maskBounds.w, maskBounds.h);
+            const artifactMaxSide = Math.max(subject.w, subject.h);
+            const scale = (maxSide / artifactMaxSide) * 1.02; // V8: 1.02倍精确控制
+            
+            const newW = Math.round(subject.w * scale);
+            const newH = Math.round(subject.h * scale);
+            
+            // 4. 创建结果canvas
+            const resultCanvas = document.createElement('canvas');
+            resultCanvas.width = width;
+            resultCanvas.height = height;
+            const resultCtx = resultCanvas.getContext('2d');
+            
+            // 5. 绘制白色背景
+            resultCtx.fillStyle = '#FFFFFF';
+            resultCtx.fillRect(0, 0, width, height);
+            
+            // 6. 计算居中位置
+            const startX = maskBounds.x + Math.round((maskBounds.w - newW) / 2);
+            const startY = maskBounds.y + Math.round((maskBounds.h - newH) / 2);
+            
+            // 7. V8改进：高质量缩放（模拟LANCZOS）
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = newW;
+            tempCanvas.height = newH;
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            // 使用高质量图像平滑
+            tempCtx.imageSmoothingEnabled = true;
+            tempCtx.imageSmoothingQuality = 'high';
+            
+            tempCtx.drawImage(
+                artifactCtx.canvas,
+                subject.x, subject.y, subject.w, subject.h,
+                0, 0, newW, newH
+            );
+            
+            // 8. 将画作映射到mask区域
+            for (let y = 0; y < newH; y++) {
+                for (let x = 0; x < newW; x++) {
+                    const resultY = startY + y;
+                    const resultX = startX + x;
+                    
+                    if (resultY >= 0 && resultY < height && resultX >= 0 && resultX < width) {
+                        const maskIdx = resultY * width + resultX;
+                        if (garmentMask[maskIdx] > 25) { // mask阈值: 25/255 ≈ 0.1
+                            // 从tempCanvas复制像素
+                            const pixel = tempCtx.getImageData(x, y, 1, 1).data;
+                            resultCtx.fillStyle = `rgba(${pixel[0]}, ${pixel[1]}, ${pixel[2]}, ${pixel[3] / 255})`;
+                            resultCtx.fillRect(resultX, resultY, 1, 1);
+                        }
+                    }
+                }
+            }
+            
+            return { canvas: resultCanvas, coverage: calculateCoverage(garmentMask, width, height) };
+        }
+        
+        // 计算mask覆盖率
+        function calculateCoverage(mask, width, height) {
+            let count = 0;
+            for (let i = 0; i < width * height; i++) {
+                if (mask[i] > 64) count++;
+            }
+            return ((count / (width * height)) * 100).toFixed(1);
+        }
+        
+        // 加载画作列表
+        async function loadPaintings() {
+            const paintings = [];
+            const baseDir = '/static/paintings/Harvard/Harvard/';
+            
+            // 加载前50幅harvard画作
+            for (let i = 0; i < 50; i++) {
+                paintings.push(`harvard_${i}.jpg`);
+            }
+            
+            const select = document.getElementById('painting-select');
+            paintings.forEach(p => {
+                const option = document.createElement('option');
+                option.value = p;
+                option.textContent = p;
+                select.appendChild(option);
+            });
+        }
+        
+        // 运行V8映射
+        async function runV8Mapping() {
+            const paintingName = document.getElementById('painting-select').value;
+            const garmentName = document.getElementById('garment-select').value;
+            
+            if (!paintingName || !garmentName) {
+                alert('请先选择画作和服装！');
+                return;
+            }
+            
+            // 加载服装图片
+            const garmentImg = new Image();
+            garmentImg.crossOrigin = 'anonymous';
+            garmentImg.src = `/static/downloads/${garmentName}`;
+            
+            garmentImg.onload = async () => {
+                // 绘制原始服装
+                const garmentCanvas = document.getElementById('original-garment');
+                const garmentCtx = garmentCanvas.getContext('2d');
+                garmentCtx.drawImage(garmentImg, 0, 0, 256, 256);
+                
+                // 创建服装mask
+                const garmentImageData = garmentCtx.getImageData(0, 0, 256, 256);
+                const garmentMask = createGarmentMaskV8(garmentImageData, 256, 256);
+                
+                // 绘制mask
+                const maskCanvas = document.getElementById('garment-mask');
+                const maskCtx = maskCanvas.getContext('2d');
+                const maskImageData = maskCtx.createImageData(256, 256);
+                for (let i = 0; i < garmentMask.length; i++) {
+                    const val = garmentMask[i];
+                    maskImageData.data[i * 4] = val;
+                    maskImageData.data[i * 4 + 1] = val;
+                    maskImageData.data[i * 4 + 2] = val;
+                    maskImageData.data[i * 4 + 3] = 255;
+                }
+                maskCtx.putImageData(maskImageData, 0, 0);
+                
+                // 加载画作图片
+                const paintingImg = new Image();
+                paintingImg.crossOrigin = 'anonymous';
+                paintingImg.src = `/static/paintings/Harvard/Harvard/${paintingName}`;
+                
+                paintingImg.onload = () => {
+                    // 绘制原始画作
+                    const paintingCanvas = document.getElementById('original-painting');
+                    const paintingCtx = paintingCanvas.getContext('2d');
+                    paintingCtx.drawImage(paintingImg, 0, 0, 256, 256);
+                    
+                    // 创建画作Canvas
+                    const artifactCanvas = document.createElement('canvas');
+                    artifactCanvas.width = 256;
+                    artifactCanvas.height = 256;
+                    const artifactCtx = artifactCanvas.getContext('2d');
+                    artifactCtx.drawImage(paintingImg, 0, 0, 256, 256);
+                    
+                    // V8映射
+                    const result = mapArtifactToGarmentV8(artifactCtx, garmentMask, 256, 256);
+                    
+                    // 绘制结果
+                    const resultCanvas = document.getElementById('v8-result');
+                    const resultCtx = resultCanvas.getContext('2d');
+                    resultCtx.drawImage(result.canvas, 0, 0);
+                    
+                    // 显示统计
+                    const coverage = calculateCoverage(garmentMask, 256, 256);
+                    document.getElementById('stats').innerHTML = `
+                        <div class="stat-item">服装: <span class="highlight">${garmentName}</span></div>
+                        <div class="stat-item">画作: <span class="highlight">${paintingName}</span></div>
+                        <div class="stat-item">Mask覆盖率: <span class="highlight">${coverage}%</span></div>
+                        <div class="stat-item">V8特性: 精确边界 + 极小羽化 + 1.02倍缩放</div>
+                    `;
+                };
+            };
+        }
+        
+        // 批量测试
+        async function runBatchTest() {
+            const garments = ['polo衫.png', 'T恤.png', '交领短袄（汉）.png', '宋褙子（女）.png', '宋褙子（男）.png', '旗袍.png', '马面裙.png'];
+            const results = document.getElementById('batch-results');
+            results.innerHTML = '<p>批量测试中...</p>';
+            
+            // 创建一个canvas用于生成结果
+            const batchCanvas = document.createElement('canvas');
+            const ctx = batchCanvas.getContext('2d');
+            
+            const pageWidth = 1400;
+            const pageHeight = 1000;
+            const garmentsPerPage = 7;
+            const paintingsPerPage = 5;
+            
+            let pageCount = 0;
+            
+            for (let pi = 0; pi < 50; pi += paintingsPerPage) {
+                if (pi >= 50) break;
+                
+                pageCount++;
+                batchCanvas.width = pageWidth;
+                batchCanvas.height = pageHeight;
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, pageWidth, pageHeight);
+                
+                // 标题
+                ctx.font = 'bold 24px Microsoft YaHei';
+                ctx.fillStyle = '#2C3E50';
+                ctx.fillText(`V8精确边界控制映射 - 第${pageCount}页`, pageWidth / 2, 40);
+                ctx.font = '14px Microsoft YaHei';
+                ctx.fillText('总计: 50幅画 × 7件服装 = 350个映射', pageWidth / 2, 65);
+                
+                const colWidth = 190;
+                const rowHeight = 190;
+                const startX = 20;
+                const startY = 90;
+                
+                // 处理每页的画作
+                for (let piPage = 0; piPage < paintingsPerPage && pi + piPage < 50; piPage++) {
+                    const paintingIdx = pi + piPage;
+                    const paintingName = `harvard_${paintingIdx}.jpg`;
+                    
+                    // 标题行
+                    ctx.font = 'bold 14px Microsoft YaHei';
+                    ctx.fillStyle = '#333';
+                    ctx.fillText(`画作: ${paintingName}`, startX, startY + piPage * (rowHeight + 20) + 10);
+                    
+                    // 加载画作
+                    const paintingImg = new Image();
+                    paintingImg.crossOrigin = 'anonymous';
+                    paintingImg.src = `/static/paintings/Harvard/Harvard/${paintingName}`;
+                    await new Promise(resolve => {
+                        paintingImg.onload = resolve;
+                        paintingImg.onerror = resolve;
+                    });
+                    
+                    // 绘制每个服装
+                    for (let gi = 0; gi < garments.length; gi++) {
+                        const garmentName = garments[gi];
+                        const garmentImg = new Image();
+                        garmentImg.crossOrigin = 'anonymous';
+                        garmentImg.src = `/static/downloads/${garmentName}`;
+                        
+                        await new Promise(resolve => {
+                            garmentImg.onload = resolve;
+                            garmentImg.onerror = resolve;
+                        });
+                        
+                        // 创建服装mask
+                        const garmentCanvas = document.createElement('canvas');
+                        garmentCanvas.width = 256;
+                        garmentCanvas.height = 256;
+                        const garmentCtx = garmentCanvas.getContext('2d');
+                        garmentCtx.drawImage(garmentImg, 0, 0, 256, 256);
+                        
+                        const garmentImageData = garmentCtx.getImageData(0, 0, 256, 256);
+                        const garmentMask = createGarmentMaskV8(garmentImageData, 256, 256);
+                        
+                        // 创建画作Canvas
+                        const artifactCanvas = document.createElement('canvas');
+                        artifactCanvas.width = 256;
+                        artifactCanvas.height = 256;
+                        const artifactCtx = artifactCanvas.getContext('2d');
+                        artifactCtx.drawImage(paintingImg, 0, 0, 256, 256);
+                        
+                        // V8映射
+                        const result = mapArtifactToGarmentV8(artifactCtx, garmentMask, 256, 256);
+                        
+                        // 计算位置
+                        const resultX = startX + gi * (colWidth + 10);
+                        const resultY = startY + piPage * (rowHeight + 20) + 20;
+                        
+                        // 绘制结果
+                        ctx.drawImage(result.canvas, resultX, resultY, colWidth, rowHeight);
+                        
+                        // 服装名称
+                        ctx.font = '12px Microsoft YaHei';
+                        ctx.fillStyle = '#666';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(garmentName.replace('.png', ''), resultX + colWidth / 2, resultY + rowHeight + 15);
+                        ctx.textAlign = 'left';
+                    }
+                }
+                
+                // 保存这一页
+                const link = document.createElement('a');
+                link.download = `v8_web_test_page${pageCount}.png`;
+                link.href = batchCanvas.toDataURL('image/png');
+                link.click();
+            }
+            
+            results.innerHTML = `
+                <p class="highlight">✅ 批量测试完成！已生成${pageCount}页结果。</p>
+                <p>文件保存在: v8_web_test_page1.png ~ v8_web_test_page${pageCount}.png</p>
+                <p>请检查浏览器下载文件夹。</p>
+            `;
+        }
+        
+        // 页面加载时初始化
+        window.onload = loadPaintings;
+    </script>
+</body>
+</html>

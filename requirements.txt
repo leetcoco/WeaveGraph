@@ -1,0 +1,30 @@
+Django==3.2.16
+pandas==1.5.3
+mysqlclient==2.1.1
+Pillow==9.5.0
+openpyxl==3.1.2
+requests==2.28.0
+
+# 网络分析依赖
+networkx>=2.8
+numpy>=1.21.0
+opencv-python>=4.5.0
+
+# 深度学习依赖（支持YOLO和Grounding DINO）
+torch>=2.0.0
+torchvision>=0.15.0
+ultralytics>=8.0.0  # YOLOv8支持
+transformers>=4.35.0  # Grounding DINO支持
+
+# 可选依赖（提升性能）
+# accelerate>=0.25.0  # GPU加速
+
+# 注意：
+# YOLOv8模型自动下载（6-25MB），完全离线使用
+# Grounding DINO模型约700MB，需要网络下载
+
+
+
+
+
+

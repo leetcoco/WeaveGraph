@@ -1,0 +1,34 @@
+{
+  "harvard_0": {
+    "name": "溪山行旅图",
+    "description": "范宽所作，北宋经典山水画，展现北方山川雄浑气势。"
+  },
+  "harvard_1": {
+    "name": "早春图",
+    "description": "郭熙代表作，表现冬去春来、万物复苏的山林景象。"
+  },
+  "smithsonian_1309": {
+    "name": "富春山居图（局部）",
+    "description": "黄公望晚年杰作，描绘富春江两岸秀丽景色，水墨淡彩。"
+  },
+  "smithsonian_1310": {
+    "name": "千里江山图（局部）",
+    "description": "王希孟十八岁所作青绿山水长卷，色彩绚丽，气魄宏大。"
+  },
+  "metropolitan_45": {
+    "name": "万壑松风图",
+    "description": "李唐名作，构图奇险，笔墨劲健，气势磅礴。"
+  },
+  "metropolitan_46": {
+    "name": "鹊华秋色图",
+    "description": "赵孟頫描绘济南鹊山与华山间的秋景，设色清润。"
+  },
+  "princeton_88": {
+    "name": "容膝斋图",
+    "description": "倪瓒典型疏淡意境之作，枯笔淡墨，萧散简远。"
+  },
+  "princeton_89": {
+    "name": "庐山高图",
+    "description": "沈周为老师祝寿而作，层峦叠嶂，气势恢宏。"
+  }
+}

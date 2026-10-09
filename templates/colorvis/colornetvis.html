@@ -1,0 +1,1757 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ColorNetVis - 颜色网络分析{% endblock %}
+
+{% block extra_css %}
+<style>
+    .vis-container {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+    }
+    
+    .network-title {
+        color: var(--primary-color);
+        font-weight: bold;
+        margin-bottom: 20px;
+        border-bottom: 3px solid var(--secondary-color);
+        padding-bottom: 10px;
+    }
+    
+    #color-network, #color-heatmap, #sankey-chart, #centrality-chart {
+        width: 100%;
+        height: 500px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background-color: #f8f9fa;
+    }
+
+    #color-3d-space {
+        width: 100%;
+        height: 620px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background-color: #f8f9fa;
+    }
+
+    .sankey-link {
+        fill: none;
+        stroke-opacity: 0.3;
+    }
+    
+    .node {
+        stroke: #fff;
+        stroke-width: 2px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .node:hover {
+        stroke-width: 3px;
+        stroke: #8B0000;
+    }
+    
+    .link {
+        stroke: #999;
+        stroke-opacity: 0.4;
+        stroke-width: 2px;
+    }
+    
+    .control-panel {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .stats-card {
+        background: white;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        text-align: center;
+    }
+    
+    .color-swatch {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+        margin-right: 8px;
+        vertical-align: middle;
+        border: 1px solid #ddd;
+    }
+    
+    .tooltip {
+        position: absolute;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.85);
+        color: white;
+        border-radius: 4px;
+        font-size: 12px;
+        pointer-events: none;
+        z-index: 1000;
+        max-width: 300px;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    
+    .category-checkbox {
+        margin-right: 8px;
+    }
+    
+    .category-label {
+        cursor: pointer;
+        user-select: none;
+    }
+    
+    .select-all-btn {
+        margin-bottom: 10px;
+    }
+    
+    .chart-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+    }
+    
+    .heatmap-cell {
+        cursor: pointer;
+        transition: opacity 0.2s;
+    }
+    
+    .heatmap-cell:hover {
+        opacity: 0.7;
+    }
+    
+    .centrality-row {
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    
+    .centrality-row:hover {
+        background-color: #f0f0f0;
+    }
+    
+    .paper-title {
+        font-style: italic;
+        color: var(--primary-color);
+        margin-bottom: 20px;
+    }
+    
+    .paper-authors {
+        color: #666;
+        margin-bottom: 15px;
+        font-size: 14px;
+    }
+    
+    @keyframes ripple {
+        0% {
+            transform: scale(0.8);
+            opacity: 1;
+        }
+        100% {
+            transform: scale(2);
+            opacity: 0;
+        }
+    }
+    
+    .ripple {
+        animation: ripple 2s ease-out infinite;
+    }
+    
+    .dot-3d {
+        cursor: pointer;
+        transition: r 0.2s;
+    }
+    
+    .dot-3d:hover {
+        r: 8;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- 标题和简介 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-5 mb-3">ColorNetVis: An Interactive Color Network Analysis System for Exploring the Color Composition of Traditional Chinese Painting</h1>
+            <p class="paper-authors">
+                Xiaojiao Chen, Qinghua Liu, Yonghao Chen, Ruihan Wang, Yang You, Wanxin Deng, Wei Chen, and Xiaosong Wang
+            </p>
+            <p class="lead">
+                探索传统中国绘画中的颜色组成与关联关系。本可视化展示颜色之间的共现网络、三维空间分布、中心性指标等，揭示不同颜色在文物中的组合规律。
+            </p>
+        </div>
+    </div>
+
+    <!-- 筛选面板 -->
+    <div class="control-panel mb-4">
+        <h5 class="network-title mb-3">数据筛选</h5>
+        <form method="GET" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label fw-bold">分类（支持多选）</label>
+                <div class="select-all-btn">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllCategories()">
+                        全选
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary ms-2" onclick="deselectAllCategories()">
+                        取消全选
+                    </button>
+                </div>
+                <div class="border p-3 rounded" style="max-height: 200px; overflow-y: auto;">
+                    {% for cat in categories %}
+                    <div class="mb-2">
+                        <input type="checkbox" name="category" id="cat_{{ cat.id }}" value="{{ cat.id }}" 
+                               class="category-checkbox"
+                               {% for sel_cat in selected_category_list %}{% if sel_cat|stringformat:"s" == cat.id|stringformat:"s" %}checked{% endif %}{% endfor %}>
+                        <label for="cat_{{ cat.id }}" class="category-label">{{ cat.name }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="col-md-4">
+                <label for="era" class="form-label fw-bold">时代</label>
+                <select name="era" id="era" class="form-select">
+                    <option value="">全部</option>
+                    <option value="古代" {% if selected_era == '古代' %}selected{% endif %}>古代</option>
+                    <option value="现代" {% if selected_era == '现代' %}selected{% endif %}>现代</option>
+                </select>
+                <small class="text-muted">选择时代以筛选文物</small>
+                <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" name="exact" id="exact" value="1" {% if selected_exact %}checked{% endif %}>
+                    <label class="form-check-label" for="exact">精确色值（不合并近似色）</label>
+                </div>
+                <div class="form-check mt-2">
+                    <input type="hidden" name="paper" value="0">
+                    <input class="form-check-input" type="checkbox" name="paper" id="paper" value="1" {% if selected_paper %}checked{% endif %}>
+                    <label class="form-check-label" for="paper">论文模式（ΔE 合并相似色）</label>
+                </div>
+                <div class="mt-2">
+                    <label for="de" class="form-label fw-bold" style="font-size: 0.85rem;">ΔE 合并阈值</label>
+                    <input class="form-control form-control-sm" type="number" name="de" id="de" min="0" max="30" step="0.1" value="{{ selected_de }}">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold">操作</label>
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-funnel"></i> 应用筛选
+                    </button>
+                    <a href="{% url 'colornetvis' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i> 清除所有筛选
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h5><i class="bi bi-palette"></i> 颜色总数</h5>
+                <h3 class="text-primary">{{ total_colors }}</h3>
+                <p class="text-muted small">当前网络图中展示的颜色节点数量（近似色已按误差合并）</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h5><i class="bi bi-collection"></i> 文物数量</h5>
+                <h3 class="text-primary">{{ total_artifacts }}</h3>
+                <p class="text-muted small">包含颜色调色板的文物数量</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h5><i class="bi bi-link"></i> 关联数量</h5>
+                <h3 class="text-primary">{{ total_links }}</h3>
+                <p class="text-muted small">颜色之间的共现关系数量</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h5><i class="bi bi-diagram-3"></i> 平均连接度</h5>
+                <h3 class="text-primary">{{ avg_degree }}</h3>
+                <p class="text-muted small">每个颜色的平均关联数</p>
+            </div>
+        </div>
+    </div>
+    {% if invalid_color_item_count and invalid_color_item_count > 0 %}
+    <div class="alert alert-warning" role="alert">
+        检测到无效颜色值 {{ invalid_color_item_count }} 个，已在统计/网络中忽略（总色值条目 {{ palette_item_count }}，本次临时补齐缺失调色板 {{ computed_missing_palette_count }} 个）。
+    </div>
+    {% endif %}
+
+    <!-- 网络可视化区域 -->
+    <div class="vis-container">
+        <h3 class="network-title">C. 颜色关联网络图（含中心性指标）</h3>
+        <div id="color-network"></div>
+        <div class="text-center mt-3">
+            <button id="reset-view" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-arrow-clockwise"></i> 重置视图
+            </button>
+            <button id="toggle-labels" class="btn btn-outline-primary btn-sm ms-2">
+                <i class="bi bi-fonts"></i> 切换标签
+            </button>
+            <button id="toggle-ripple" class="btn btn-outline-primary btn-sm ms-2">
+                <i class="bi bi-water"></i> 切换波纹效果
+            </button>
+        </div>
+    </div>
+
+    <!-- 图例说明 -->
+    <div class="control-panel mb-4">
+        <h5 class="network-title">网络图例说明</h5>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="legend-item">
+                    <div class="color-swatch" style="background-color: #8B0000;"></div>
+                    <span>节点：颜色，每个节点代表一种颜色</span>
+                </div>
+                <div class="legend-item">
+                    <div style="width: 30px; height: 2px; background-color: #999; margin-right: 8px;"></div>
+                    <span>边：颜色共现，表示两种颜色在同一文物中同时出现</span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="legend-item">
+                    <i class="bi bi-mouse2 me-2"></i>
+                    <span>悬停：高亮关联节点和边，显示详细信息</span>
+                </div>
+                <div class="legend-item">
+                    <i class="bi bi-hand-index me-2"></i>
+                    <span>拖拽：调整节点位置</span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="legend-item">
+                    <i class="bi bi-zoom-in me-2"></i>
+                    <span>滚轮：缩放视图</span>
+                </div>
+                <div class="legend-item">
+                    <i class="bi bi-arrows-move me-2"></i>
+                    <span>拖拽背景：平移视图</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 中心性指标 -->
+    <div class="chart-grid mb-4">
+        <div class="vis-container">
+            <h3 class="network-title">度中心性 Top 15</h3>
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>排名</th>
+                            <th>颜色</th>
+                            <th>预览</th>
+                            <th>度中心性（邻接数）</th>
+                            <th>加权度（共现总数）</th>
+                        </tr>
+                    </thead>
+                    <tbody id="degree-table"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="vis-container">
+            <h3 class="network-title">接近中心性 Top 15</h3>
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>排名</th>
+                            <th>颜色</th>
+                            <th>预览</th>
+                            <th>接近中心性（reachable/距离和）</th>
+                        </tr>
+                    </thead>
+                    <tbody id="closeness-table"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="vis-container">
+            <h3 class="network-title">介数中心性 Top 15</h3>
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>排名</th>
+                            <th>颜色</th>
+                            <th>预览</th>
+                            <th>介数中心性（加权最短路，归一化）</th>
+                        </tr>
+                    </thead>
+                    <tbody id="betweenness-table"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 三维颜色空间 -->
+    <div class="vis-container mb-4">
+        <h3 class="network-title">D. 颜色三维空间分布</h3>
+        <div class="text-center mb-3">
+            <button id="view-rgb" class="btn btn-primary me-2" onclick="switch3DView('rgb')">RGB</button>
+            <button id="view-hsv" class="btn btn-outline-primary me-2" onclick="switch3DView('hsv')">HSV</button>
+            <button id="view-lab" class="btn btn-outline-primary" onclick="switch3DView('lab')">LAB</button>
+        </div>
+        <div id="color-3d-space"></div>
+    </div>
+
+    <!-- 颜色属性分布视图 -->
+    <div class="vis-container mb-4">
+        <h3 class="network-title">E. Color Attribute Distribution View - 颜色属性分布视图</h3>
+        <p class="text-muted">Sankey流向图展示颜色的多维属性分布：颜色 → 题材 → 设色手法 → 朝代</p>
+        <div id="sankey-chart"></div>
+    </div>
+
+    <!-- 热力图 -->
+    <div class="vis-container mt-4">
+        <h3 class="network-title">F. 颜色共现热力图</h3>
+        <p class="text-muted">热力图展示不同颜色之间的共现频率，颜色越深表示共现次数越多</p>
+        <div id="color-heatmap"></div>
+    </div>
+
+    <!-- 高频颜色展示 -->
+    <div class="vis-container mt-4">
+        <h3 class="network-title">高频颜色 Top 10</h3>
+        <div class="row">
+            {% for color, count in top_colors %}
+            <div class="col-md-3 col-sm-4 col-6 mb-3">
+                <div class="d-flex align-items-center p-3 border rounded" style="background-color: rgba(0,0,0,0.05);">
+                    <div class="color-swatch" style="background-color: {{ color }}; width: 40px; height: 40px; border-radius: 50%;"></div>
+                    <div>
+                        <div class="fw-bold">{{ color }}</div>
+                        <div class="text-muted small">{{ count }} 次出现</div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- 工具提示 -->
+<div class="tooltip" id="network-tooltip" style="display: none;"></div>
+<div class="tooltip" id="coheatmap-tooltip" style="display: none;"></div>
+<div class="tooltip" id="3d-tooltip" style="display: none;"></div>
+<div class="tooltip" id="sankey-tooltip" style="display: none;"></div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- 引入 D3.js 库和 Sankey 插件 -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://unpkg.com/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+
+<script>
+    // 从 Django 模板中获取网络数据和Sankey数据
+    const networkData = {{ network_data_json|safe }};
+    const sankeyData = {{ sankey_data_json|safe }};
+    
+    // 初始化变量
+    let simulation;
+    let svg;
+    let nodeGroup;
+    let linkGroup;
+    let labelsVisible = true;
+    let rippleEnabled = false;
+    let rippleInterval = null;
+    
+    // 全选分类
+    function selectAllCategories() {
+        document.querySelectorAll('.category-checkbox').forEach(cb => cb.checked = true);
+    }
+    
+    // 取消全选分类
+    function deselectAllCategories() {
+        document.querySelectorAll('.category-checkbox').forEach(cb => cb.checked = false);
+    }
+    
+    function getNodeId(value) {
+        if (!value) return value;
+        if (typeof value === 'object') return value.id;
+        return value;
+    }
+
+    function isLightHex(hex) {
+        if (!hex || typeof hex !== 'string' || hex.length !== 7) return false;
+        const rgb = hexToRgb(hex);
+        const luminance = 0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b;
+        return luminance >= 200;
+    }
+
+    function buildAdjacency() {
+        const adj = new Map();
+        (networkData.nodes || []).forEach(n => adj.set(n.id, []));
+        (networkData.links || []).forEach(l => {
+            const s = getNodeId(l.source);
+            const t = getNodeId(l.target);
+            const w = Number(l.value) || 0;
+            if (!s || !t || s === t || w <= 0) return;
+            if (!adj.has(s)) adj.set(s, []);
+            if (!adj.has(t)) adj.set(t, []);
+            adj.get(s).push({ to: t, weight: w });
+            adj.get(t).push({ to: s, weight: w });
+        });
+        return adj;
+    }
+
+    function dijkstraDistances(adj, source) {
+        const nodes = [...adj.keys()];
+        const dist = {};
+        nodes.forEach(n => { dist[n] = Number.POSITIVE_INFINITY; });
+        dist[source] = 0;
+        const visited = new Set();
+
+        while (visited.size < nodes.length) {
+            let u = null;
+            let best = Number.POSITIVE_INFINITY;
+            for (const n of nodes) {
+                if (!visited.has(n) && dist[n] < best) {
+                    best = dist[n];
+                    u = n;
+                }
+            }
+            if (u === null) break;
+            visited.add(u);
+
+            for (const e of (adj.get(u) || [])) {
+                const cost = e.weight > 0 ? (1 / e.weight) : Number.POSITIVE_INFINITY;
+                const alt = dist[u] + cost;
+                if (alt < dist[e.to] - 1e-12) dist[e.to] = alt;
+            }
+        }
+        return dist;
+    }
+
+    function betweennessCentralityWeighted(adj) {
+        const nodes = [...adj.keys()];
+        const cb = {};
+        nodes.forEach(v => { cb[v] = 0; });
+
+        for (const s of nodes) {
+            const S = [];
+            const P = {};
+            const sigma = {};
+            const dist = {};
+            nodes.forEach(v => {
+                P[v] = [];
+                sigma[v] = 0;
+                dist[v] = Number.POSITIVE_INFINITY;
+            });
+            sigma[s] = 1;
+            dist[s] = 0;
+
+            const visited = new Set();
+            while (visited.size < nodes.length) {
+                let v = null;
+                let best = Number.POSITIVE_INFINITY;
+                for (const n of nodes) {
+                    if (!visited.has(n) && dist[n] < best) {
+                        best = dist[n];
+                        v = n;
+                    }
+                }
+                if (v === null) break;
+                visited.add(v);
+                S.push(v);
+
+                for (const e of (adj.get(v) || [])) {
+                    const w = e.to;
+                    const cost = e.weight > 0 ? (1 / e.weight) : Number.POSITIVE_INFINITY;
+                    const vwDist = dist[v] + cost;
+                    if (vwDist < dist[w] - 1e-12) {
+                        dist[w] = vwDist;
+                        sigma[w] = sigma[v];
+                        P[w] = [v];
+                    } else if (Math.abs(vwDist - dist[w]) <= 1e-12) {
+                        sigma[w] += sigma[v];
+                        P[w].push(v);
+                    }
+                }
+            }
+
+            const delta = {};
+            nodes.forEach(v => { delta[v] = 0; });
+            while (S.length > 0) {
+                const w = S.pop();
+                for (const v of P[w]) {
+                    if (sigma[w] !== 0) {
+                        delta[v] += (sigma[v] / sigma[w]) * (1 + delta[w]);
+                    }
+                }
+                if (w !== s) cb[w] += delta[w];
+            }
+        }
+
+        nodes.forEach(v => { cb[v] = cb[v] / 2; });
+        const n = nodes.length;
+        const norm = n > 2 ? (1 / ((n - 1) * (n - 2) / 2)) : 1;
+        nodes.forEach(v => { cb[v] = cb[v] * norm; });
+        return cb;
+    }
+
+    // 计算中心性指标（权重使用共现次数，距离=1/权重）
+    function calculateCentrality() {
+        const nodes = networkData.nodes || [];
+        const adj = buildAdjacency();
+        const nodeIds = nodes.map(n => n.id);
+
+        const degreeCentrality = {};
+        const weightedDegree = {};
+        nodeIds.forEach(id => {
+            const edges = adj.get(id) || [];
+            const neighborSet = new Set(edges.map(e => e.to));
+            degreeCentrality[id] = neighborSet.size;
+            weightedDegree[id] = edges.reduce((sum, e) => sum + e.weight, 0);
+        });
+
+        const closenessCentrality = {};
+        nodeIds.forEach(id => {
+            const dist = dijkstraDistances(adj, id);
+            let distSum = 0;
+            let reachable = 0;
+            nodeIds.forEach(other => {
+                if (other === id) return;
+                const d = dist[other];
+                if (Number.isFinite(d) && d > 0) {
+                    distSum += d;
+                    reachable += 1;
+                }
+            });
+            closenessCentrality[id] = distSum > 0 && reachable > 0 ? (reachable / distSum) : 0;
+        });
+
+        const betweennessCentrality = betweennessCentralityWeighted(adj);
+
+        return {
+            degree: nodes
+                .map(node => ({
+                    id: node.id,
+                    color: node.color,
+                    degree: degreeCentrality[node.id] || 0,
+                    strength: weightedDegree[node.id] || 0
+                }))
+                .sort((a, b) => (b.degree - a.degree) || (b.strength - a.strength))
+                .slice(0, 15),
+            closeness: nodes
+                .map(node => ({ id: node.id, color: node.color, value: closenessCentrality[node.id] || 0 }))
+                .sort((a, b) => b.value - a.value)
+                .slice(0, 15),
+            betweenness: nodes
+                .map(node => ({ id: node.id, color: node.color, value: betweennessCentrality[node.id] || 0 }))
+                .sort((a, b) => b.value - a.value)
+                .slice(0, 15)
+        };
+    }
+    
+    // 初始化网络图
+    function initNetwork() {
+        const container = document.getElementById('color-network');
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        
+        d3.select('#color-network').html('');
+        
+        svg = d3.select('#color-network')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height);
+        
+        const zoom = d3.zoom()
+            .scaleExtent([0.2, 5])
+            .on('zoom', (event) => {
+                svg.selectAll('g').attr('transform', event.transform);
+            });
+        
+        svg.call(zoom);
+        
+        const g = svg.append('g');
+        linkGroup = g.append('g').attr('class', 'links');
+        nodeGroup = g.append('g').attr('class', 'nodes');
+        
+        const links = linkGroup.selectAll('line')
+            .data(networkData.links)
+            .enter()
+            .append('line')
+            .attr('class', 'link')
+            .attr('stroke-width', d => Math.sqrt(d.value) * 2)
+            .attr('stroke', '#999')
+            .on('mouseover', function(event, d) {
+                d3.select(this)
+                    .style('stroke-opacity', 1)
+                    .style('stroke', '#8B0000')
+                    .attr('stroke-width', Math.max(4, Math.sqrt(d.value) * 2));
+                
+                const tooltip = document.getElementById('network-tooltip');
+                const source = getNodeId(d.source);
+                const target = getNodeId(d.target);
+                
+                tooltip.innerHTML = `
+                    <div style="font-size: 14px;"><strong>关联:</strong>
+                        <span style="display:inline-block;width:14px;height:14px;background:${source};border:1px solid #ddd;"></span> ${source}
+                        ↔
+                        <span style="display:inline-block;width:14px;height:14px;background:${target};border:1px solid #ddd;"></span> ${target}
+                    </div>
+                    <div><strong>共现次数:</strong> ${d.value}</div>
+                `;
+                tooltip.style.display = 'block';
+                tooltip.style.left = (event.pageX + 15) + 'px';
+                tooltip.style.top = (event.pageY + 15) + 'px';
+            })
+            .on('mouseout', function() {
+                d3.select(this)
+                    .style('stroke-opacity', 0.4)
+                    .style('stroke', '#999')
+                    .attr('stroke-width', d => Math.sqrt(d.value) * 2);
+                document.getElementById('network-tooltip').style.display = 'none';
+            });
+        
+        const nodes = nodeGroup.selectAll('circle')
+            .data(networkData.nodes)
+            .enter()
+            .append('circle')
+            .attr('class', 'node')
+            .attr('r', 12)
+            .attr('fill', d => d.color)
+            .attr('stroke', d => isLightHex(d.color) ? '#333' : '#fff')
+            .call(d3.drag()
+                .on('start', dragstarted)
+                .on('drag', dragged)
+                .on('end', dragended));
+        
+        const labels = nodeGroup.selectAll('text')
+            .data(networkData.nodes)
+            .enter()
+            .append('text')
+            .attr('class', 'node-label')
+            .attr('text-anchor', 'middle')
+            .attr('dy', -18)
+            .attr('font-size', '10px')
+            .attr('font-weight', 'bold')
+            .attr('fill', '#333')
+            .attr('text-shadow', '1px 1px 2px white')
+            .text(d => d.color.substring(1, 7))
+            .style('display', labelsVisible ? 'block' : 'none');
+        
+        simulation = d3.forceSimulation(networkData.nodes)
+            .force('link', d3.forceLink(networkData.links).id(d => d.id).distance(90))
+            .force('charge', d3.forceManyBody().strength(-260))
+            .force('center', d3.forceCenter(width / 2, height / 2))
+            .force('x', d3.forceX(width / 2).strength(0.08))
+            .force('y', d3.forceY(height / 2).strength(0.08))
+            .force('collision', d3.forceCollide().radius(22).iterations(2))
+            .alphaDecay(0.12)
+            .alphaMin(0.06)
+            .on('tick', ticked);
+
+        setTimeout(() => {
+            if (simulation) simulation.stop();
+        }, 900);
+        
+        nodes.on('mouseover', function(event, d) {
+            const nodeId = d.id;
+            
+            linkGroup.selectAll('line')
+                .style('stroke-opacity', l => (getNodeId(l.source) === nodeId || getNodeId(l.target) === nodeId) ? 1 : 0.15)
+                .style('stroke', l => (getNodeId(l.source) === nodeId || getNodeId(l.target) === nodeId) ? '#8B0000' : '#999')
+                .attr('stroke-width', l => (getNodeId(l.source) === nodeId || getNodeId(l.target) === nodeId) ? 4 : Math.sqrt(l.value) * 2);
+            
+            nodeGroup.selectAll('circle')
+                .style('opacity', n => (n.id === nodeId || 
+                    networkData.links.some(l => 
+                        (getNodeId(l.source) === nodeId && getNodeId(l.target) === n.id) ||
+                        (getNodeId(l.target) === nodeId && getNodeId(l.source) === n.id)
+                    )) ? 1 : 0.3);
+            
+            const tooltip = document.getElementById('network-tooltip');
+            tooltip.innerHTML = `
+                <div style="font-size: 14px;"><strong>颜色:</strong> <span style="display:inline-block;width:16px;height:16px;background:${d.color};border:1px solid #ddd;"></span> ${d.color}</div>
+                <div><strong>出现次数:</strong> ${d.frequency}</div>
+                <div><strong>关联颜色数:</strong> ${
+                    networkData.links.filter(l => getNodeId(l.source) === nodeId || getNodeId(l.target) === nodeId).length
+                }</div>
+            `;
+            tooltip.style.display = 'block';
+            tooltip.style.left = (event.pageX + 15) + 'px';
+            tooltip.style.top = (event.pageY + 15) + 'px';
+        })
+        .on('mouseout', function() {
+            linkGroup.selectAll('line')
+                .style('stroke-opacity', 0.4)
+                .style('stroke', '#999')
+                .attr('stroke-width', d => Math.sqrt(d.value) * 2);
+            
+            nodeGroup.selectAll('circle')
+                .style('opacity', 1);
+            
+            document.getElementById('network-tooltip').style.display = 'none';
+        });
+        
+        svg.on('click', function() {
+            linkGroup.selectAll('line')
+                .style('stroke-opacity', 0.4)
+                .style('stroke', '#999')
+                .attr('stroke-width', d => Math.sqrt(d.value) * 2);
+            
+            nodeGroup.selectAll('circle')
+                .style('opacity', 1);
+        });
+        
+        function ticked() {
+            const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+            const r = 14;
+            networkData.nodes.forEach(n => {
+                n.x = clamp(n.x, r, width - r);
+                n.y = clamp(n.y, r, height - r);
+            });
+
+            links
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+            
+            nodes
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y);
+            
+            labels
+                .attr('x', d => d.x)
+                .attr('y', d => d.y);
+        }
+        
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+        
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+    }
+    
+    // 初始化中心性表格
+    function initCentralityTable() {
+        const centralityData = calculateCentrality();
+
+        // 度中心性表格
+        const degreeTbody = document.getElementById('degree-table');
+        degreeTbody.innerHTML = '';
+        centralityData.degree.forEach((data, index) => {
+            const row = document.createElement('tr');
+            row.className = 'centrality-row';
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td><code>${data.color}</code></td>
+                <td><div class="color-swatch" style="background-color: ${data.color};"></div></td>
+                <td>${data.degree}</td>
+                <td>${Math.round(data.strength)}</td>
+            `;
+            degreeTbody.appendChild(row);
+        });
+
+        // 接近中心性表格
+        const closenessTbody = document.getElementById('closeness-table');
+        closenessTbody.innerHTML = '';
+        centralityData.closeness.forEach((data, index) => {
+            const row = document.createElement('tr');
+            row.className = 'centrality-row';
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td><code>${data.color}</code></td>
+                <td><div class="color-swatch" style="background-color: ${data.color};"></div></td>
+                <td>${data.value.toFixed(4)}</td>
+            `;
+            closenessTbody.appendChild(row);
+        });
+
+        // 介数中心性表格
+        const betweennessTbody = document.getElementById('betweenness-table');
+        betweennessTbody.innerHTML = '';
+        centralityData.betweenness.forEach((data, index) => {
+            const row = document.createElement('tr');
+            row.className = 'centrality-row';
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td><code>${data.color}</code></td>
+                <td><div class="color-swatch" style="background-color: ${data.color};"></div></td>
+                <td>${data.value.toFixed(4)}</td>
+            `;
+            betweennessTbody.appendChild(row);
+        });
+    }
+    
+    // 初始化Sankey图
+    function initSankeyChart() {
+        const container = document.getElementById('sankey-chart');
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        const margin = {top: 20, right: 150, bottom: 20, left: 150};
+
+        d3.select('#sankey-chart').html('');
+
+        const svg = d3.select('#sankey-chart')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height)
+            .append('g')
+            .attr('transform', `translate(${margin.left},${margin.top})`);
+
+        const graphWidth = width - margin.left - margin.right;
+        const graphHeight = height - margin.top - margin.bottom;
+
+        // 创建Sankey生成器
+        const sankey = d3.sankey()
+            .nodeWidth(15)
+            .nodePadding(10)
+            .extent([[0, 0], [graphWidth, graphHeight]]);
+
+        const {nodes, links} = sankey({
+            nodes: sankeyData.nodes.map(d => Object.assign({}, d)),
+            links: sankeyData.links.map(d => Object.assign({}, d))
+        });
+
+        // 绘制连接线
+        svg.append('g')
+            .selectAll('path')
+            .data(links)
+            .enter()
+            .append('path')
+            .attr('class', 'sankey-link')
+            .attr('d', d3.sankeyLinkHorizontal())
+            .attr('stroke', d => d.color || '#999')
+            .attr('stroke-opacity', 0.3)
+            .attr('fill', 'none')
+            .attr('stroke-width', d => Math.max(1, d.width))
+            .style('mix-blend-mode', 'multiply')
+            .on('mouseover', function(event, d) {
+                d3.select(this).attr('stroke-opacity', 0.7);
+                const tooltip = document.getElementById('sankey-tooltip');
+                tooltip.innerHTML = `
+                    <div><strong>流量:</strong> ${Math.round(d.value)}</div>
+                `;
+                tooltip.style.display = 'block';
+                tooltip.style.left = (event.pageX + 10) + 'px';
+                tooltip.style.top = (event.pageY + 10) + 'px';
+            })
+            .on('mouseout', function() {
+                d3.select(this).attr('stroke-opacity', 0.3);
+                document.getElementById('sankey-tooltip').style.display = 'none';
+            });
+
+        // 绘制节点
+        svg.append('g')
+            .selectAll('rect')
+            .data(nodes)
+            .enter()
+            .append('rect')
+            .attr('x', d => d.x0)
+            .attr('y', d => d.y0)
+            .attr('height', d => d.y1 - d.y0)
+            .attr('width', d => d.x1 - d.x0)
+            .attr('fill', d => d.color || '#999')
+            .attr('stroke', '#000')
+            .attr('stroke-width', 1)
+            .style('cursor', 'pointer')
+            .on('mouseover', function(event, d) {
+                d3.select(this).attr('stroke-width', 3);
+                const tooltip = document.getElementById('sankey-tooltip');
+                tooltip.innerHTML = `
+                    <div><strong>节点:</strong> ${d.name}</div>
+                    <div><strong>值:</strong> ${Math.round(d.value)}</div>
+                `;
+                tooltip.style.display = 'block';
+                tooltip.style.left = (event.pageX + 10) + 'px';
+                tooltip.style.top = (event.pageY + 10) + 'px';
+            })
+            .on('mouseout', function() {
+                d3.select(this).attr('stroke-width', 1);
+                document.getElementById('sankey-tooltip').style.display = 'none';
+            });
+
+        // 添加节点标签（左侧）
+        svg.append('g')
+            .selectAll('text')
+            .data(nodes.filter(d => d.x0 < graphWidth / 2))
+            .enter()
+            .append('text')
+            .attr('x', d => d.x0 - 6)
+            .attr('y', d => (d.y1 + d.y0) / 2)
+            .attr('dy', '0.35em')
+            .attr('text-anchor', 'end')
+            .text(d => d.name)
+            .attr('font-size', '11px')
+            .attr('fill', '#333');
+
+        // 添加节点标签（右侧）
+        svg.append('g')
+            .selectAll('text')
+            .data(nodes.filter(d => d.x0 >= graphWidth / 2))
+            .enter()
+            .append('text')
+            .attr('x', d => d.x1 + 6)
+            .attr('y', d => (d.y1 + d.y0) / 2)
+            .attr('dy', '0.35em')
+            .attr('text-anchor', 'start')
+            .text(d => d.name)
+            .attr('font-size', '11px')
+            .attr('fill', '#333');
+    }
+
+
+    
+    // 初始化热力图
+    function initHeatmap() {
+        const container = document.getElementById('color-heatmap');
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        const margin = {top: 80, right: 120, bottom: 80, left: 120};
+        
+        d3.select('#color-heatmap').html('');
+        
+        const svg = d3.select('#color-heatmap')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height);
+        
+        const topColors = [...networkData.nodes]
+            .sort((a, b) => b.frequency - a.frequency)
+            .slice(0, 20);
+        
+        const colorNames = topColors.map(d => d.color);
+        
+        const cellSize = Math.min(
+            (width - margin.left - margin.right) / colorNames.length,
+            (height - margin.top - margin.bottom) / colorNames.length
+        ) - 2;
+        
+        const x = d3.scaleBand()
+            .domain(colorNames)
+            .range([margin.left, width - margin.right])
+            .padding(0.1);
+        
+        const y = d3.scaleBand()
+            .domain(colorNames)
+            .range([margin.top, height - margin.bottom])
+            .padding(0.1);
+        
+        const cooccurrenceMatrix = [];
+        for (let i = 0; i < colorNames.length; i++) {
+            for (let j = 0; j < colorNames.length; j++) {
+                const source = colorNames[i];
+                const target = colorNames[j];
+                let value = 0;
+                networkData.links.forEach(link => {
+                    const s = getNodeId(link.source);
+                    const t = getNodeId(link.target);
+                    if ((s === source && t === target) || (s === target && t === source)) {
+                        value = link.value;
+                    }
+                });
+                cooccurrenceMatrix.push({x: source, y: target, value: value});
+            }
+        }
+        
+        const maxValue = d3.max(cooccurrenceMatrix, d => d.value);
+        
+        const colorScale = d3.scaleSequential(d3.interpolateBlues)
+            .domain([0, maxValue]);
+        
+        const swatchSize = Math.max(10, Math.min(18, Math.floor(Math.min(x.bandwidth(), y.bandwidth()) * 0.7)));
+        const swatchStroke = '#666';
+        const swatchStrokeWidth = 0.6;
+
+        const cellsG = svg.append('g').attr('class', 'heatmap-cells');
+        cellsG.selectAll('rect.heatmap-cell')
+            .data(cooccurrenceMatrix)
+            .enter()
+            .append('rect')
+            .attr('class', 'heatmap-cell')
+            .attr('x', d => x(d.x))
+            .attr('y', d => y(d.y))
+            .attr('width', x.bandwidth())
+            .attr('height', y.bandwidth())
+            .attr('fill', d => colorScale(d.value))
+            .attr('stroke', 'white')
+            .attr('stroke-width', 1)
+            .on('mouseover', function(event, d) {
+                const tooltip = document.getElementById('coheatmap-tooltip');
+                tooltip.innerHTML = `
+                    <div><strong>颜色1:</strong> ${d.x}</div>
+                    <div><strong>颜色2:</strong> ${d.y}</div>
+                    <div><strong>共现次数:</strong> ${d.value}</div>
+                `;
+                tooltip.style.display = 'block';
+                tooltip.style.left = (event.pageX + 10) + 'px';
+                tooltip.style.top = (event.pageY + 10) + 'px';
+            })
+            .on('mouseout', function() {
+                document.getElementById('coheatmap-tooltip').style.display = 'none';
+            });
+
+        const xSwatchesG = svg.append('g').attr('class', 'heatmap-axis-swatches heatmap-axis-swatches-x');
+        xSwatchesG.selectAll('rect.heatmap-axis-swatch-x')
+            .data(colorNames)
+            .enter()
+            .append('rect')
+            .attr('class', 'heatmap-axis-swatch-x')
+            .attr('x', d => x(d) + (x.bandwidth() - swatchSize) / 2)
+            .attr('y', margin.top - swatchSize - 10)
+            .attr('width', swatchSize)
+            .attr('height', swatchSize)
+            .attr('fill', d => d)
+            .attr('stroke', swatchStroke)
+            .attr('stroke-width', swatchStrokeWidth)
+            .attr('rx', 2)
+            .attr('ry', 2);
+
+        const ySwatchesG = svg.append('g').attr('class', 'heatmap-axis-swatches heatmap-axis-swatches-y');
+        ySwatchesG.selectAll('rect.heatmap-axis-swatch-y')
+            .data(colorNames)
+            .enter()
+            .append('rect')
+            .attr('class', 'heatmap-axis-swatch-y')
+            .attr('x', margin.left - swatchSize - 10)
+            .attr('y', d => y(d) + (y.bandwidth() - swatchSize) / 2)
+            .attr('width', swatchSize)
+            .attr('height', swatchSize)
+            .attr('fill', d => d)
+            .attr('stroke', swatchStroke)
+            .attr('stroke-width', swatchStrokeWidth)
+            .attr('rx', 2)
+            .attr('ry', 2);
+        
+        const legendWidth = 200;
+        const legendHeight = 20;
+        const legendScale = d3.scaleLinear()
+            .domain([0, maxValue])
+            .range([0, legendWidth]);
+        
+        const legendSvg = svg.append('g')
+            .attr('transform', `translate(${width - legendWidth - margin.right}, ${height - margin.bottom + 30})`);
+        
+        const legendGradient = legendSvg.append('defs')
+            .append('linearGradient')
+            .attr('id', 'legend-gradient')
+            .attr('x1', '0%')
+            .attr('x2', '100%')
+            .attr('y1', '0%')
+            .attr('y2', '0%');
+        
+        legendGradient.append('stop')
+            .attr('offset', '0%')
+            .attr('stop-color', colorScale(0));
+        
+        legendGradient.append('stop')
+            .attr('offset', '100%')
+            .attr('stop-color', colorScale(maxValue));
+        
+        legendSvg.append('rect')
+            .attr('width', legendWidth)
+            .attr('height', legendHeight)
+            .style('fill', 'url(#legend-gradient)');
+        
+        legendSvg.append('text')
+            .attr('x', 0)
+            .attr('y', legendHeight + 15)
+            .style('font-size', '11px')
+            .text('0');
+        
+        legendSvg.append('text')
+            .attr('x', legendWidth)
+            .attr('y', legendHeight + 15)
+            .attr('text-anchor', 'end')
+            .style('font-size', '11px')
+            .text(maxValue.toString());
+        
+        legendSvg.append('text')
+            .attr('x', legendWidth / 2)
+            .attr('y', legendHeight + 30)
+            .attr('text-anchor', 'middle')
+            .style('font-size', '11px')
+            .style('font-weight', 'bold')
+            .text('共现次数');
+    }
+
+    // 颜色转换函数
+    function hexToRgb(hex) {
+        const r = parseInt(hex.substring(1, 3), 16);
+        const g = parseInt(hex.substring(3, 5), 16);
+        const b = parseInt(hex.substring(5, 7), 16);
+        return {r, g, b};
+    }
+    
+    function rgbToHsv(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const d = max - min;
+        
+        let h, s, v;
+        v = max;
+        s = max === 0 ? 0 : d / max;
+        
+        if (max === min) {
+            h = 0;
+        } else if (max === r) {
+            h = (g - b) / d + (g < b ? 6 : 0);
+        } else if (max === g) {
+            h = (b - r) / d + 2;
+        } else {
+            h = (r - g) / d + 4;
+        }
+        h /= 6;
+        
+        return {h: h * 360, s: s * 100, v: v * 100};
+    }
+    
+    function rgbToLab(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        
+        let x, y, z;
+        r = r > 0.04045 ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
+        g = g > 0.04045 ? Math.pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
+        b = b > 0.04045 ? Math.pow((b + 0.055) / 1.055, 2.4) : b / 12.92;
+        
+        x = r * 0.4124 + g * 0.3576 + b * 0.1805;
+        y = r * 0.2126 + g * 0.7152 + b * 0.0722;
+        z = r * 0.0193 + g * 0.1192 + b * 0.9505;
+        
+        const xn = x / 0.95047;
+        const yn = y / 1.00000;
+        const zn = z / 1.08883;
+        
+        const fx = xn > 0.008856 ? Math.pow(xn, 1/3) : 7.787 * xn + 16/116;
+        const fy = yn > 0.008856 ? Math.pow(yn, 1/3) : 7.787 * yn + 16/116;
+        const fz = zn > 0.008856 ? Math.pow(zn, 1/3) : 7.787 * zn + 16/116;
+        
+        return {
+            L: 116 * fy - 16,
+            A: 500 * (fx - fy),
+            B: 200 * (fy - fz)
+        };
+    }
+    
+    // 当前3D视图
+    let currentColorSpace = 'rgb';
+    let threeDRotationX = 0.7;
+    let threeDRotationY = -0.6;
+    let threeDZoom = 1;
+    let threeDDepthShading = true;
+
+    // 初始化三维颜色空间
+    function init3DColorSpace(colorSpace = currentColorSpace) {
+        currentColorSpace = colorSpace;
+        const container = document.getElementById('color-3d-space');
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+
+        d3.select('#color-3d-space').html('');
+
+        const svg = d3.select('#color-3d-space')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height);
+
+        const defs = svg.append('defs');
+        defs.append('marker')
+            .attr('id', 'axis-arrow')
+            .attr('viewBox', '0 -5 10 10')
+            .attr('refX', 10)
+            .attr('refY', 0)
+            .attr('markerWidth', 7)
+            .attr('markerHeight', 7)
+            .attr('orient', 'auto')
+            .append('path')
+            .attr('d', 'M0,-5L10,0L0,5')
+            .attr('fill', '#666');
+
+        function defineAxisArrow(id, color) {
+            defs.append('marker')
+                .attr('id', id)
+                .attr('viewBox', '0 -5 10 10')
+                .attr('refX', 10)
+                .attr('refY', 0)
+                .attr('markerWidth', 7)
+                .attr('markerHeight', 7)
+                .attr('orient', 'auto')
+                .append('path')
+                .attr('d', 'M0,-5L10,0L0,5')
+                .attr('fill', color);
+        }
+
+        defineAxisArrow('axis-arrow-x', '#e74c3c');
+        defineAxisArrow('axis-arrow-y', '#27ae60');
+        defineAxisArrow('axis-arrow-z', '#2980b9');
+
+        defs.append('marker')
+            .attr('id', 'axis-arrow-start')
+            .attr('viewBox', '0 -5 10 10')
+            .attr('refX', 0)
+            .attr('refY', 0)
+            .attr('markerWidth', 7)
+            .attr('markerHeight', 7)
+            .attr('orient', 'auto')
+            .append('path')
+            .attr('d', 'M10,-5L0,0L10,5')
+            .attr('fill', '#666');
+
+        const max3DPoints = 800;
+        const topColors = (networkData.nodes || []).slice(0, max3DPoints);
+
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const baseScale = Math.min(width, height) * 0.6;
+        const camera = 3.2;
+
+        // 转换颜色数据
+        const color3DData = topColors.map(node => {
+            const rgb = hexToRgb(node.color);
+            let raw;
+            let p;
+
+            if (colorSpace === 'rgb') {
+                raw = {x: rgb.r, y: rgb.g, z: rgb.b};
+                p = {
+                    x: rgb.r / 255,
+                    y: rgb.g / 255,
+                    z: rgb.b / 255
+                };
+            } else if (colorSpace === 'hsv') {
+                const hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+                raw = {h: hsv.h, s: hsv.s, v: hsv.v};
+                p = {
+                    x: hsv.h / 360,
+                    y: hsv.s / 100,
+                    z: hsv.v / 100
+                };
+            } else if (colorSpace === 'lab') {
+                const lab = rgbToLab(rgb.r, rgb.g, rgb.b);
+                raw = {a: lab.A, l: lab.L, b: lab.B};
+                p = {
+                    x: Math.max(-1, Math.min(1, lab.A / 128)),
+                    y: (lab.L / 100) * 2 - 1,
+                    z: Math.max(-1, Math.min(1, lab.B / 128))
+                };
+            }
+
+            return {p, raw, color: node.color, frequency: node.frequency};
+        });
+
+        const axesGroup = svg.append('g');
+        const pointsGroup = svg.append('g');
+
+        function rotatePoint(point) {
+            const x0 = point.x;
+            const y0 = point.y;
+            const z0 = point.z;
+
+            const cy = Math.cos(threeDRotationY);
+            const sy = Math.sin(threeDRotationY);
+            const x1 = x0 * cy + z0 * sy;
+            const z1 = -x0 * sy + z0 * cy;
+
+            const cx = Math.cos(threeDRotationX);
+            const sx = Math.sin(threeDRotationX);
+            const y2 = y0 * cx - z1 * sx;
+            const z2 = y0 * sx + z1 * cx;
+
+            return {x: x1, y: y2, z: z2};
+        }
+
+        function project(point) {
+            const scale = baseScale * threeDZoom;
+            const r = rotatePoint(point);
+            const denom = camera - r.z;
+            return {
+                x: centerX + (r.x * scale) / denom,
+                y: centerY - (r.y * scale) / denom,
+                z: r.z
+            };
+        }
+
+        function render3D() {
+            const axisLength = 1.0;
+            const isZeroOrigin = colorSpace === 'rgb' || colorSpace === 'hsv';
+            const origin = project({x: 0, y: 0, z: 0});
+            const xAxisNeg = project({x: -axisLength, y: 0, z: 0});
+            const xAxisPos = project({x: axisLength, y: 0, z: 0});
+            const yAxisNeg = project({x: 0, y: -axisLength, z: 0});
+            const yAxisPos = project({x: 0, y: axisLength, z: 0});
+            const zAxisNeg = project({x: 0, y: 0, z: -axisLength});
+            const zAxisPos = project({x: 0, y: 0, z: axisLength});
+
+            axesGroup.selectAll('*').remove();
+
+            const corners = (isZeroOrigin
+                ? [
+                    {x: 0, y: 0, z: 0},
+                    {x: 1, y: 0, z: 0},
+                    {x: 1, y: 1, z: 0},
+                    {x: 0, y: 1, z: 0},
+                    {x: 0, y: 0, z: 1},
+                    {x: 1, y: 0, z: 1},
+                    {x: 1, y: 1, z: 1},
+                    {x: 0, y: 1, z: 1}
+                ]
+                : [
+                    {x: -1, y: -1, z: -1},
+                    {x: 1, y: -1, z: -1},
+                    {x: 1, y: 1, z: -1},
+                    {x: -1, y: 1, z: -1},
+                    {x: -1, y: -1, z: 1},
+                    {x: 1, y: -1, z: 1},
+                    {x: 1, y: 1, z: 1},
+                    {x: -1, y: 1, z: 1}
+                ]
+            ).map(project);
+
+            if (isZeroOrigin) {
+                const faces = [
+                    [0, 1, 2, 3],
+                    [0, 1, 5, 4],
+                    [0, 3, 7, 4]
+                ];
+
+                faces.forEach(face => {
+                    const path = face
+                        .map((idx, i) => `${i === 0 ? 'M' : 'L'}${corners[idx].x},${corners[idx].y}`)
+                        .join(' ') + ' Z';
+                    axesGroup.append('path')
+                        .attr('d', path)
+                        .attr('fill', '#8aa0b8')
+                        .attr('opacity', 0.06);
+                });
+            }
+
+            const edges = [
+                [0, 1], [1, 2], [2, 3], [3, 0],
+                [4, 5], [5, 6], [6, 7], [7, 4],
+                [0, 4], [1, 5], [2, 6], [3, 7]
+            ];
+
+            edges.forEach(([a, b]) => {
+                axesGroup.append('line')
+                    .attr('x1', corners[a].x).attr('y1', corners[a].y)
+                    .attr('x2', corners[b].x).attr('y2', corners[b].y)
+                    .attr('stroke', '#bdbdbd')
+                    .attr('stroke-width', 1)
+                    .attr('stroke-dasharray', '3,3')
+                    .attr('opacity', 0.85);
+            });
+
+            function drawAxis(from, to, color, markerId) {
+                axesGroup.append('line')
+                    .attr('x1', from.x).attr('y1', from.y)
+                    .attr('x2', to.x).attr('y2', to.y)
+                    .attr('stroke', color)
+                    .attr('stroke-width', 2)
+                    .attr('marker-end', `url(#${markerId})`);
+            }
+
+            function drawAxisSpan(from, to, color, startMarkerId, endMarkerId) {
+                axesGroup.append('line')
+                    .attr('x1', from.x).attr('y1', from.y)
+                    .attr('x2', to.x).attr('y2', to.y)
+                    .attr('stroke', color)
+                    .attr('stroke-width', 2)
+                    .attr('marker-start', `url(#${startMarkerId})`)
+                    .attr('marker-end', `url(#${endMarkerId})`);
+            }
+
+            if (isZeroOrigin) {
+                drawAxis(origin, xAxisPos, '#e74c3c', 'axis-arrow-x');
+                drawAxis(origin, yAxisPos, '#27ae60', 'axis-arrow-y');
+                drawAxis(origin, zAxisPos, '#2980b9', 'axis-arrow-z');
+            } else {
+                drawAxisSpan(xAxisNeg, xAxisPos, '#666', 'axis-arrow-start', 'axis-arrow');
+                drawAxisSpan(yAxisNeg, yAxisPos, '#666', 'axis-arrow-start', 'axis-arrow');
+                drawAxisSpan(zAxisNeg, zAxisPos, '#666', 'axis-arrow-start', 'axis-arrow');
+            }
+
+            const mappingText = colorSpace === 'hsv'
+                ? 'HSV: 原点(0,0,0)，X=H（0-360°）, Y=S（0-100）, Z=V（0-100）'
+                : (colorSpace === 'lab' ? 'LAB: X=A, Y=L, Z=B' : 'RGB: 原点(0,0,0)，X=R, Y=G, Z=B');
+
+            const axisMeta = (function() {
+                if (colorSpace === 'rgb') {
+                    return {
+                        x: {min: 0, mid: 128, max: 255},
+                        y: {min: 0, mid: 128, max: 255},
+                        z: {min: 0, mid: 128, max: 255}
+                    };
+                }
+                if (colorSpace === 'lab') {
+                    return {
+                        x: {min: -128, mid: 0, max: 128},
+                        y: {min: 0, mid: 50, max: 100},
+                        z: {min: -128, mid: 0, max: 128}
+                    };
+                }
+                return {
+                    x: {min: 0, mid: 180, max: 360},
+                    y: {min: 0, mid: 50, max: 100},
+                    z: {min: 0, mid: 50, max: 100}
+                };
+            })();
+
+            function addAxisLabelAt(point, text, dx = 6, dy = 4) {
+                axesGroup.append('text')
+                    .attr('x', point.x).attr('y', point.y)
+                    .attr('dx', dx).attr('dy', dy)
+                    .attr('fill', '#333')
+                    .attr('font-size', 10)
+                    .text(String(text));
+            }
+
+            axesGroup.append('text')
+                .attr('x', 12)
+                .attr('y', 22)
+                .attr('fill', '#333')
+                .attr('font-size', 12)
+                .attr('font-weight', 'bold')
+                .text('拖拽旋转 · 滚轮缩放 · 空格键立体感');
+
+            axesGroup.append('text')
+                .attr('x', 12)
+                .attr('y', 40)
+                .attr('fill', '#333')
+                .attr('font-size', 12)
+                .text(mappingText);
+
+            axesGroup.append('text')
+                .attr('x', xAxisPos.x).attr('y', xAxisPos.y)
+                .attr('dx', 6).attr('dy', 4)
+                .attr('fill', '#333')
+                .attr('font-size', 12)
+                .attr('font-weight', 'bold')
+                .text('X');
+            axesGroup.append('text')
+                .attr('x', yAxisPos.x).attr('y', yAxisPos.y)
+                .attr('dx', 6).attr('dy', 4)
+                .attr('fill', '#333')
+                .attr('font-size', 12)
+                .attr('font-weight', 'bold')
+                .text('Y');
+            axesGroup.append('text')
+                .attr('x', zAxisPos.x).attr('y', zAxisPos.y)
+                .attr('dx', 6).attr('dy', 4)
+                .attr('fill', '#333')
+                .attr('font-size', 12)
+                .attr('font-weight', 'bold')
+                .text('Z');
+
+            if (isZeroOrigin) {
+                const ticks = [0, 0.5, 1.0];
+                const labelsX = [axisMeta.x.min, axisMeta.x.mid, axisMeta.x.max];
+                const labelsY = [axisMeta.y.min, axisMeta.y.mid, axisMeta.y.max];
+                const labelsZ = [axisMeta.z.min, axisMeta.z.mid, axisMeta.z.max];
+
+                function drawTicks(getPoint, labels, dx, dy) {
+                    ticks.forEach((t, i) => {
+                        const p = getPoint(t);
+                        axesGroup.append('circle')
+                            .attr('cx', p.x).attr('cy', p.y)
+                            .attr('r', 2)
+                            .attr('fill', '#666');
+                        addAxisLabelAt(p, labels[i], dx, dy);
+                    });
+                }
+
+                drawTicks(
+                    (t) => project({x: t * axisLength, y: 0, z: 0}),
+                    labelsX,
+                    -16,
+                    14
+                );
+                drawTicks(
+                    (t) => project({x: 0, y: t * axisLength, z: 0}),
+                    labelsY,
+                    10,
+                    -6
+                );
+                drawTicks(
+                    (t) => project({x: 0, y: 0, z: t * axisLength}),
+                    labelsZ,
+                    10,
+                    14
+                );
+            } else {
+                addAxisLabelAt(xAxisNeg, axisMeta.x.min, -22, 4);
+                addAxisLabelAt(origin, axisMeta.x.mid, -18, 14);
+                addAxisLabelAt(xAxisPos, axisMeta.x.max, 10, 4);
+
+                addAxisLabelAt(yAxisNeg, axisMeta.y.min, -18, 4);
+                addAxisLabelAt(yAxisPos, axisMeta.y.max, 10, 4);
+
+                addAxisLabelAt(zAxisNeg, axisMeta.z.min, -18, 4);
+                addAxisLabelAt(zAxisPos, axisMeta.z.max, 10, 4);
+            }
+
+            const projected = color3DData
+                .map(d => {
+                    const pr = project(d.p);
+                    return {...d, sx: pr.x, sy: pr.y, depth: pr.z};
+                })
+                .sort((a, b) => a.depth - b.depth);
+
+            const freqExtentRaw = d3.extent(projected, d => Math.max(1, Number(d.frequency) || 1));
+            const freqMin = Math.max(1, freqExtentRaw[0] || 1);
+            const freqMax = Math.max(freqMin + 1e-9, freqExtentRaw[1] || freqMin);
+            const radiusScale = d3.scaleSqrt().domain([freqMin, freqMax]).range([3, 7]).clamp(true);
+
+            const depthExtent = d3.extent(projected, d => Number(d.depth) || 0);
+            const depthScale = d3.scaleLinear().domain(depthExtent).range([0, 1]).clamp(true);
+
+            pointsGroup.selectAll('circle')
+                .data(projected, d => d.color)
+                .join('circle')
+                .attr('class', 'dot-3d')
+                .attr('cx', d => d.sx)
+                .attr('cy', d => d.sy)
+                .attr('r', d => radiusScale(Math.max(1, Number(d.frequency) || 1)))
+                .attr('fill', d => d.color)
+                .attr('stroke', d => isLightHex(d.color) ? '#333' : 'white')
+                .attr('stroke-width', 1)
+                .attr('opacity', d => {
+                    if (!threeDDepthShading) return 0.78;
+                    const t = depthScale(Number(d.depth) || 0);
+                    return 0.25 + 0.75 * t;
+                })
+                .on('mouseover', function(event, d) {
+                    const tooltip = document.getElementById('3d-tooltip');
+                    let coordLine = '';
+                    if (colorSpace === 'hsv') {
+                        coordLine = `H=${d.raw.h.toFixed(1)}, S=${d.raw.s.toFixed(1)}, V=${d.raw.v.toFixed(1)}`;
+                    } else if (colorSpace === 'lab') {
+                        coordLine = `A=${d.raw.a.toFixed(1)}, L=${d.raw.l.toFixed(1)}, B=${d.raw.b.toFixed(1)}`;
+                    } else {
+                        coordLine = `R=${d.raw.x}, G=${d.raw.y}, B=${d.raw.z}`;
+                    }
+                    tooltip.innerHTML = `
+                        <div><strong>颜色:</strong> ${d.color}</div>
+                        <div><strong>坐标:</strong> ${coordLine}</div>
+                        <div><strong>频率:</strong> ${d.frequency}</div>
+                    `;
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = (event.pageX + 10) + 'px';
+                    tooltip.style.top = (event.pageY + 10) + 'px';
+                })
+                .on('mouseout', function() {
+                    document.getElementById('3d-tooltip').style.display = 'none';
+                });
+
+            pointsGroup.selectAll('text.dot-3d-label').remove();
+        }
+
+        svg.call(d3.drag().on('drag', function(event) {
+            threeDRotationY += event.dx * 0.01;
+            threeDRotationX += event.dy * 0.01;
+            render3D();
+        }));
+
+        svg.node().addEventListener('wheel', (event) => {
+            event.preventDefault();
+            const delta = event.deltaY > 0 ? 0.9 : 1.1;
+            threeDZoom = Math.max(0.5, Math.min(3.0, threeDZoom * delta));
+            render3D();
+        }, {passive: false});
+
+        render3D();
+    }
+
+    // 切换3D视图
+    function switch3DView(colorSpace) {
+        document.querySelectorAll('#view-rgb, #view-hsv, #view-lab').forEach(btn => {
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-outline-primary');
+        });
+        document.getElementById('view-' + colorSpace).classList.remove('btn-outline-primary');
+        document.getElementById('view-' + colorSpace).classList.add('btn-primary');
+        init3DColorSpace(colorSpace);
+    }
+    
+    // 波纹效果
+    function toggleRipple() {
+        rippleEnabled = !rippleEnabled;
+        
+        if (rippleEnabled) {
+            rippleInterval = setInterval(() => {
+                const randomNode = networkData.nodes[Math.floor(Math.random() * networkData.nodes.length)];
+                const node = svg.select(`circle[fill="${randomNode.color}"]`);
+                
+                if (!node.empty()) {
+                    node.transition()
+                        .duration(2000)
+                        .attr('r', 25)
+                        .style('opacity', 0)
+                        .on('end', function() {
+                            d3.select(this)
+                                .attr('r', 12)
+                                .style('opacity', 1);
+                        });
+                }
+            }, 500);
+        } else {
+            clearInterval(rippleInterval);
+        }
+    }
+    
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        initNetwork();
+        initCentralityTable();
+        initSankeyChart();
+        initHeatmap();
+        init3DColorSpace('rgb');
+
+        window.addEventListener('resize', function() {
+            initNetwork();
+            initHeatmap();
+            initSankeyChart();
+            init3DColorSpace(currentColorSpace);
+        });
+
+        document.getElementById('reset-view').addEventListener('click', function() {
+            simulation.alpha(1).restart();
+        });
+
+        document.getElementById('toggle-labels').addEventListener('click', function() {
+            labelsVisible = !labelsVisible;
+            svg.selectAll('.node-label')
+                .style('display', labelsVisible ? 'block' : 'none');
+        });
+
+        document.getElementById('toggle-ripple').addEventListener('click', toggleRipple);
+
+        document.addEventListener('keydown', function(event) {
+            if (event.code === 'Space') {
+                event.preventDefault();
+                threeDDepthShading = !threeDDepthShading;
+                init3DColorSpace(currentColorSpace);
+            }
+        });
+    });
+</script>
+{% endblock %}

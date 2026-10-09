@@ -1,0 +1,353 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ analysis.artifact.name }} - 结构分析详情{% endblock %}
+
+{% block extra_css %}
+<style>
+.composition-detail {
+    padding: 30px 0;
+}
+.detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+.detail-header h1 {
+    margin: 0;
+}
+.analysis-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-bottom: 30px;
+}
+@media (max-width: 768px) {
+    .analysis-grid {
+        grid-template-columns: 1fr;
+    }
+}
+.analysis-panel {
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+.panel-header {
+    background: #f8f9fa;
+    padding: 15px 20px;
+    border-bottom: 1px solid #eee;
+}
+.panel-header h4 {
+    margin: 0;
+    font-size: 1rem;
+}
+.panel-body {
+    padding: 0;
+}
+.panel-body img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+.stats-panel {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+}
+.stat-item {
+    text-align: center;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+.stat-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #8B4513;
+}
+.stat-label {
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 5px;
+}
+.semantic-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 15px;
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    background: #f8f9fa;
+    border-radius: 15px;
+    font-size: 0.85rem;
+}
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+.elements-section {
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+.elements-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+.element-card {
+    border: 1px solid #eee;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.element-card:hover {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+}
+.element-card img {
+    width: 100%;
+    height: 120px;
+    object-fit: contain;
+    background: #f8f9fa;
+}
+.element-info {
+    padding: 10px;
+    font-size: 0.85rem;
+}
+.element-type {
+    font-weight: bold;
+    color: #333;
+}
+.element-meta {
+    color: #666;
+    font-size: 0.75rem;
+    margin-top: 3px;
+}
+.semantic-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: bold;
+}
+.semantic-mountain { background: #8B4513; color: white; }
+.semantic-water { background: #4682B4; color: white; }
+.semantic-tree { background: #228B22; color: white; }
+.semantic-rock { background: #696969; color: white; }
+.semantic-cloud { background: #D3D3D3; color: #333; }
+.semantic-sky { background: #87CEEB; color: white; }
+.semantic-ground { background: #D2B48C; color: #333; }
+.semantic-unknown { background: #eee; color: #666; }
+
+.action-bar {
+    position: sticky;
+    bottom: 20px;
+    background: white;
+    padding: 15px 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 30px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="composition-detail">
+    <div class="container">
+        <div class="detail-header">
+            <div>
+                <h1>{{ analysis.artifact.name }}</h1>
+                <p class="text-muted">{{ analysis.artifact.era_display }} · {{ analysis.region_count }}个结构单元</p>
+            </div>
+            <div>
+                <span class="badge badge-success">{{ analysis.get_status_display }}</span>
+            </div>
+        </div>
+        
+        <div class="analysis-grid">
+            <div class="analysis-panel">
+                <div class="panel-header">
+                    <h4>原始画作</h4>
+                </div>
+                <div class="panel-body">
+                    {% if analysis.artifact.image %}
+                    <img src="{{ analysis.artifact.image.url }}" alt="{{ analysis.artifact.name }}">
+                    {% else %}
+                    <img src="{% static 'images/placeholder.png' %}" alt="无图片">
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="analysis-panel">
+                <div class="panel-header">
+                    <h4>线条提取</h4>
+                </div>
+                <div class="panel-body">
+                    {% if analysis.edge_image %}
+                    <img src="{{ analysis.edge_image.url }}" alt="线条提取">
+                    {% else %}
+                    <div class="text-center py-5 text-muted">暂无线条提取图</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="analysis-panel">
+                <div class="panel-header">
+                    <h4>区域分割</h4>
+                </div>
+                <div class="panel-body">
+                    {% if analysis.segmented_image %}
+                    <img src="{{ analysis.segmented_image.url }}" alt="区域分割">
+                    {% else %}
+                    <div class="text-center py-5 text-muted">暂无区域分割图</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="analysis-panel">
+                <div class="panel-header">
+                    <h4>语义分类可视化</h4>
+                </div>
+                <div class="panel-body">
+                    {% if analysis.segmented_image %}
+                    <img src="{{ analysis.segmented_image.url }}" alt="语义分类" id="semantic-viz">
+                    {% else %}
+                    <div class="text-center py-5 text-muted">暂无语义分类图</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="stats-panel">
+            <h4>分析统计</h4>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value">{{ analysis.region_count }}</div>
+                    <div class="stat-label">结构单元</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ analysis.processing_time|floatformat:1 }}s</div>
+                    <div class="stat-label">处理时间</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ semantic_stats|length }}</div>
+                    <div class="stat-label">语义类型</div>
+                </div>
+                {% for type, count in semantic_stats.items %}
+                <div class="stat-item">
+                    <div class="stat-value">{{ count }}</div>
+                    <div class="stat-label">
+                        {% if type == 'mountain' %}山体{% endif %}
+                        {% if type == 'water' %}水体{% endif %}
+                        {% if type == 'tree' %}树木{% endif %}
+                        {% if type == 'rock' %}岩石{% endif %}
+                        {% if type == 'cloud' %}云雾{% endif %}
+                        {% if type == 'sky' %}天空{% endif %}
+                        {% if type == 'ground' %}地面{% endif %}
+                        {% if type == 'unknown' %}未知{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="semantic-legend">
+                <span class="legend-item"><span class="legend-color semantic-mountain"></span>山体</span>
+                <span class="legend-item"><span class="legend-color semantic-water"></span>水体</span>
+                <span class="legend-item"><span class="legend-color semantic-tree"></span>树木</span>
+                <span class="legend-item"><span class="legend-color semantic-rock"></span>岩石</span>
+                <span class="legend-item"><span class="legend-color semantic-cloud"></span>云雾</span>
+                <span class="legend-item"><span class="legend-color semantic-sky"></span>天空</span>
+                <span class="legend-item"><span class="legend-color semantic-ground"></span>地面</span>
+            </div>
+        </div>
+        
+        <div class="elements-section">
+            <h4>结构单元详情</h4>
+            <p class="text-muted">点击单元查看详情</p>
+            
+            <div class="elements-grid">
+                {% for element in elements %}
+                <div class="element-card" onclick="showElementDetail({{ element.id }})">
+                    {% if element.isolated_image %}
+                    <img src="{{ element.isolated_image.url }}" alt="结构单元{{ element.element_id }}">
+                    {% else %}
+                    <div style="height:120px;background:#f8f9fa;display:flex;align-items:center;justify-content:center;">
+                        <span class="text-muted">无图像</span>
+                    </div>
+                    {% endif %}
+                    <div class="element-info">
+                        <div class="element-type">
+                            <span class="semantic-badge semantic-{{ element.semantic_type }}">
+                                {{ element.get_semantic_type_display }}
+                            </span>
+                        </div>
+                        <div class="element-meta">
+                            #{{ element.element_id }} · {{ element.area|filesizeformat }} · 置信度{{ element.confidence|floatformat:2 }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="action-bar">
+            <a href="{% url 'composition_editor' analysis.id %}" class="btn btn-primary btn-lg">
+                <i class="fas fa-paint-brush"></i> 开始重组创作
+            </a>
+            <a href="{% url 'composition_elements' analysis.id %}" class="btn btn-outline-secondary btn-lg">
+                <i class="fas fa-th"></i> 查看全部单元
+            </a>
+            <a href="{% url 'composition_list' %}" class="btn btn-outline-secondary btn-lg">
+                <i class="fas fa-arrow-left"></i> 返回列表
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- 元素详情模态框 -->
+<div class="modal fade" id="elementModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">结构单元详情</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="elementModalBody">
+                <!-- 动态加载 -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showElementDetail(elementId) {
+    // 这里可以添加AJAX加载元素详情的逻辑
+    $('#elementModal').modal('show');
+}
+</script>
+{% endblock %}

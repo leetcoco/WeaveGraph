@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 400" width="200" height="400">
+  <style>
+    .outline { fill: none; stroke: #000000; stroke-width: 2; }
+  </style>
+  <!-- 汉服长裤 -->
+  <path class="outline" d="M40,50 C40,30 80,20 100,20 C120,20 160,30 160,50 L160,350 C160,370 120,380 100,380 C80,380 40,370 40,350 Z"/>
+  <!-- 裤腿分开 -->
+  <path class="outline" d="M60,200 L60,300"/>
+  <path class="outline" d="M140,200 L140,300"/>
+  <!-- 腰带 -->
+  <path class="outline" d="M40,50 L160,50"/>
+  <!-- 裤脚 -->
+  <path class="outline" d="M30,350 L40,340 L40,360 L30,370 Z"/>
+  <path class="outline" d="M170,350 L160,340 L160,360 L170,370 Z"/>
+</svg>

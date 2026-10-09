@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ artifact.name }} - 数字文物库{% endblock %}
+
+{% block content %}
+<div class="py-5">
+    <div class="container">
+        <!-- 面包屑 -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">首页</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'artifact_list' %}">文物总目</a></li>
+                {% if artifact.category and artifact.category.slug %}
+                <li class="breadcrumb-item"><a href="{% url 'category_artifacts' artifact.category.slug %}">{{ artifact.category.name }}</a></li>
+                {% endif %}
+                <li class="breadcrumb-item active">{{ artifact.name }}</li>
+            </ol>
+        </nav>
+
+        <div class="row">
+            <!-- 文物图片 -->
+            <div class="col-lg-7 mb-4">
+                {% if artifact.external_image %}
+                <img src="{{ artifact.external_image }}" class="detail-image" alt="{{ artifact.name }}">
+                {% elif artifact.image %}
+                <img src="{{ artifact.image.url }}" class="detail-image" alt="{{ artifact.name }}">
+                {% else %}
+                <img src="https://via.placeholder.com/600x400/F5F5DC/333333?text={{ artifact.name }}" class="detail-image" alt="{{ artifact.name }}">
+                {% endif %}
+                
+                <!-- 调色板展示 -->
+                {% if artifact.parsed_color_palette %}
+<style>
+.color-palette {
+  margin: 20px 0;
+}
+.color-item {
+  display: inline-block;
+  margin-right: 15px;
+  text-align: center;
+  vertical-align: top;
+}
+.color-block {
+  width: 60px;
+  height: 60px;
+  border: 2px solid #333;
+  border-radius: 4px;
+  margin-bottom: 5px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+.color-label {
+  font-size: 11px;
+  color: #555;
+  font-family: monospace;
+}
+</style>
+
+<div class="color-palette">
+  <h4>主要色彩</h4>
+  {% for color in artifact.parsed_color_palette %}
+  <div class="color-item">
+    <div class="color-block" style="background-color: {{ color }};"></div>
+    <div class="color-label">{{ color }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+            </div>
+
+            <!-- 文物信息 -->
+            <div class="col-lg-5">
+                <h1 class="mb-4">{{ artifact.name }}</h1>
+
+                <!-- 分析工具（功能已隐藏） -->
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">基本信息</h5>
+                        {% if artifact.category and artifact.category.slug %}
+                        <div class="mb-2">
+                            <span class="info-label">分类：</span>
+                            <a href="{% url 'category_artifacts' artifact.category.slug %}" class="text-decoration-none">{{ artifact.category.name }}</a>
+                        </div>
+                        {% elif artifact.category %}
+                        <div class="mb-2">
+                            <span class="info-label">分类：</span>
+                            <span>{{ artifact.category.name }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="mb-2">
+                            <span class="info-label">年代：</span>
+                            <span>{{ artifact.era }}</span>
+                        </div>
+                        {% if artifact.color %}
+                        <div class="mb-2">
+                            <span class="info-label">颜色：</span>
+                            <span>{{ artifact.color }}</span>
+                        </div>
+                        {% endif %}
+                        {% if artifact.material %}
+                        <div class="mb-2">
+                            <span class="info-label">材质：</span>
+                            <span>{{ artifact.material }}</span>
+                        </div>
+                        {% endif %}
+                        {% if artifact.dimensions %}
+                        <div class="mb-2">
+                            <span class="info-label">尺寸：</span>
+                            <span>{{ artifact.dimensions }}</span>
+                        </div>
+                        {% endif %}
+                        {% if artifact.collection_number %}
+                        <div class="mb-2">
+                            <span class="info-label">收藏编号：</span>
+                            <span>{{ artifact.collection_number }}</span>
+                        </div>
+                        {% endif %}
+                        {% if artifact.exhibition %}
+                        <div class="mb-2">
+                            <span class="info-label">所属展览：</span>
+                            <a href="{% url 'exhibition_detail' artifact.exhibition.slug %}" class="text-decoration-none">{{ artifact.exhibition.title }}</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">文物描述</h5>
+                        <p class="card-text">{{ artifact.description }}</p>
+                    </div>
+                </div>
+
+                <div class="text-muted small">
+                    <p>创建时间：{{ artifact.created_at|date:"Y年m月d日 H:i" }}</p>
+                    {% if artifact.updated_at != artifact.created_at %}
+                    <p>更新时间：{{ artifact.updated_at|date:"Y年m月d日 H:i" }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 相关文物 -->
+        {% if related_artifacts %}
+        <hr class="my-5">
+        <div class="mt-5">
+            <h3 class="section-title">相关文物</h3>
+            <div class="row">
+                {% for related in related_artifacts %}
+                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                    <div class="card artifact-card">
+                        <a href="{% url 'artifact_detail' related.slug %}">
+                            {% if related.image %}
+                            <img src="{{ related.image.url }}" class="card-img-top" alt="{{ related.name }}">
+                            {% else %}
+                            <img src="https://via.placeholder.com/300x250/F5F5DC/333333?text={{ related.name }}" class="card-img-top" alt="{{ related.name }}">
+                            {% endif %}
+                        </a>
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <a href="{% url 'artifact_detail' related.slug %}" class="text-decoration-none text-dark">{{ related.name }}</a>
+                            </h5>
+                            <p class="card-text text-muted small">
+                                <i class="bi bi-clock"></i> {{ related.era }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

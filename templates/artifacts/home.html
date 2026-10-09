@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}首页 - 文物色彩探索平台{% endblock %}
+
+{% block content %}
+<!-- 英雄区域 -->
+<section class="hero-section">
+    <div class="container">
+        <h1 class="display-4 mb-4">欢迎来到文物色彩探索平台</h1>
+        <p class="lead mb-4">以文物与艺术作品为灵感，进行色彩分析与创意设计体验</p>
+        <a href="{% url 'artifact_list' %}" class="btn btn-light btn-lg">
+            <i class="bi bi-grid"></i> 浏览文物
+        </a>
+        <a href="{% url 'colornetvis' %}" class="btn btn-outline-light btn-lg ms-3">
+            <i class="bi bi-diagram-3"></i> 颜色网络分析
+        </a>
+        <a href="{% url 'fashion:design' %}" class="btn btn-outline-light btn-lg ms-3">
+            <i class="bi bi-tshirt"></i> 服装设计
+        </a>
+    </div>
+</section>
+
+<!-- 专题展览 -->
+<section class="py-5">
+    <div class="container">
+        <h2 class="section-title">专题展览</h2>
+        {% if active_exhibitions %}
+        <div class="row">
+            {% for exhibition in active_exhibitions %}
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card exhibition-card">
+                    {% if exhibition.image %}
+                    <img src="{{ exhibition.image.url }}" class="card-img-top" alt="{{ exhibition.title }}">
+                    {% else %}
+                    <img src="data:image/svg+xml;utf8,<svg xmlns=&apos;http://www.w3.org/2000/svg&apos; width=&apos;800&apos; height=&apos;600&apos; viewBox=&apos;0 0 800 600&apos;><defs><linearGradient id=&apos;g&apos; x1=&apos;0&apos; y1=&apos;0&apos; x2=&apos;1&apos; y2=&apos;1&apos;><stop offset=&apos;0%&apos; stop-color=&apos;%238B0000&apos;/><stop offset=&apos;100%&apos; stop-color=&apos;%23B22222&apos;/></linearGradient></defs><rect width=&apos;100%25&apos; height=&apos;100%25&apos; fill=&apos;url(%23g)&apos;/><text x=&apos;50%25&apos; y=&apos;50%25&apos; dominant-baseline=&apos;middle&apos; text-anchor=&apos;middle&apos; fill=&apos;%23FFFFFF&apos; font-size=&apos;36&apos; font-family=&apos;Arial&apos;>Exhibition</text></svg>" class="card-img-top" alt="{{ exhibition.title }}">
+                    {% endif %}
+                    <div class="card-body">
+                        <h5 class="card-title">{{ exhibition.title }}</h5>
+                        <p class="card-text text-muted">
+                            <small>
+                                <i class="bi bi-calendar"></i> {{ exhibition.start_date|date:"Y年m月d日" }} - {{ exhibition.end_date|date:"Y年m月d日" }}
+                            </small>
+                        </p>
+                        <p class="card-text">{{ exhibition.description|truncatewords:20 }}</p>
+                        <a href="{% url 'exhibition_detail' exhibition.slug %}" class="btn btn-outline-primary">
+                            <i class="bi bi-arrow-right"></i> 查看详情
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-collection display-4"></i>
+            <p>暂无展览</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- 最新文物（数据库数据） -->
+<section class="py-5 bg-white">
+    <div class="container">
+        <h2 class="section-title">最新文物</h2>
+        {% if latest_artifacts %}
+        <div class="row">
+            {% for artifact in latest_artifacts %}
+            <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                <div class="card artifact-card">
+                    <a href="{% url 'artifact_detail' artifact.slug %}">
+                        {% if artifact.external_image %}
+                        <img src="{{ artifact.external_image }}" class="card-img-top" alt="{{ artifact.name }}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=&apos;http://www.w3.org/2000/svg&apos; width=&apos;640&apos; height=&apos;480&apos;><rect width=&apos;100%25&apos; height=&apos;100%25&apos; fill=&apos;%23f2f2f2&apos;/><text x=&apos;50%25&apos; y=&apos;50%25&apos; dominant-baseline=&apos;middle&apos; text-anchor=&apos;middle&apos; fill=&apos;%23999&apos; font-size=&apos;24&apos;>暂无图片</text></svg>'">
+                        {% elif artifact.image %}
+                        <img src="{{ artifact.image.url }}" class="card-img-top" alt="{{ artifact.name }}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=&apos;http://www.w3.org/2000/svg&apos; width=&apos;640&apos; height=&apos;480&apos;><rect width=&apos;100%25&apos; height=&apos;100%25&apos; fill=&apos;%23f2f2f2&apos;/><text x=&apos;50%25&apos; y=&apos;50%25&apos; dominant-baseline=&apos;middle&apos; text-anchor=&apos;middle&apos; fill=&apos;%23999&apos; font-size=&apos;24&apos;>暂无图片</text></svg>'">
+                        {% else %}
+                        <img src="data:image/svg+xml;utf8,<svg xmlns=&apos;http://www.w3.org/2000/svg&apos; width=&apos;640&apos; height=&apos;480&apos;><rect width=&apos;100%25&apos; height=&apos;100%25&apos; fill=&apos;%23f2f2f2&apos;/><text x=&apos;50%25&apos; y=&apos;50%25&apos; dominant-baseline=&apos;middle&apos; text-anchor=&apos;middle&apos; fill=&apos;%23999&apos; font-size=&apos;24&apos;>暂无图片</text></svg>" class="card-img-top" alt="{{ artifact.name }}">
+                        {% endif %}
+                    </a>
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <a href="{% url 'artifact_detail' artifact.slug %}" class="text-decoration-none text-dark">{{ artifact.name }}</a>
+                        </h5>
+                        <p class="card-text text-muted small">
+                            <i class="bi bi-tag"></i> {{ artifact.category.name }} | 
+                            <i class="bi bi-clock"></i> {{ artifact.era_display }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="text-center mt-4">
+            <a href="{% url 'artifact_list' %}" class="btn btn-primary">
+                <i class="bi bi-list"></i> 查看所有文物
+            </a>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-inbox display-4"></i>
+            <p>暂无文物数据</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+
+{% endblock %}

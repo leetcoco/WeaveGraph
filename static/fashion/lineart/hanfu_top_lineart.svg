@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 250" width="200" height="250">
+  <style>
+    .outline { fill: none; stroke: #000000; stroke-width: 2; }
+  </style>
+  <!-- 汉服上衣主体 -->
+  <path class="outline" d="M40,50 C40,30 70,20 100,20 C130,20 160,30 160,50 L160,200 C160,220 130,230 100,230 C70,230 40,220 40,200 Z"/>
+  <!-- 宽大衣袖 -->
+  <path class="outline" d="M20,80 L40,70 L40,120 L20,130 Z"/>
+  <path class="outline" d="M180,80 L160,70 L160,120 L180,130 Z"/>
+  <!-- 交领设计 -->
+  <path class="outline" d="M80,50 L100,30 L120,50"/>
+  <!-- 腰带系带 -->
+  <path class="outline" d="M90,150 L110,150"/>
+  <path class="outline" d="M100,150 L100,170"/>
+</svg>

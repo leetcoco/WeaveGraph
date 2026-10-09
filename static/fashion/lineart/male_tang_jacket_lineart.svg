@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300" width="200" height="300">
+  <style>
+    .outline { fill: none; stroke: #000000; stroke-width: 2; }
+  </style>
+  <!-- 唐装外套主体 -->
+  <path class="outline" d="M40,40 C40,20 80,10 100,10 C120,10 160,20 160,40 L160,250 C160,270 120,280 100,280 C80,280 40,270 40,250 Z"/>
+  <!-- 对襟设计 -->
+  <path class="outline" d="M100,40 L100,250"/>
+  <!-- 装饰纽扣 -->
+  <circle cx="100" cy="80" r="4" fill="#000"/>
+  <circle cx="100" cy="120" r="4" fill="#000"/>
+  <circle cx="100" cy="160" r="4" fill="#000"/>
+  <circle cx="100" cy="200" r="4" fill="#000"/>
+  <!-- 口袋 -->
+  <path class="outline" d="M60,150 L80,150 L80,180 L60,180 Z"/>
+  <path class="outline" d="M140,150 L120,150 L120,180 L140,180 Z"/>
+</svg>

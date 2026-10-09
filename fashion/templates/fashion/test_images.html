@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>图片加载测试</title>
+</head>
+<body>
+    <h1>图片加载测试</h1>
+    <h2>服装图片</h2>
+    <div id="test-results"></div>
+    
+    <script>
+        const garmentImages = [
+            '/static/downloads/T恤.png',
+            '/static/downloads/polo衫.png',
+            '/static/downloads/交领短袄（汉）.png',
+            '/static/downloads/宋褙子（男）.png',
+            '/static/downloads/宋褙子（女）.png',
+            '/static/downloads/旗袍.png',
+            '/static/downloads/马面裙.png'
+        ];
+        
+        const resultsDiv = document.getElementById('test-results');
+        
+        garmentImages.forEach(url => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                const div = document.createElement('div');
+                div.innerHTML = `<span style="color: green;">✓</span> ${url}`;
+                resultsDiv.appendChild(div);
+            };
+            img.onerror = () => {
+                const div = document.createElement('div');
+                div.innerHTML = `<span style="color: red;">✗</span> ${url}`;
+                resultsDiv.appendChild(div);
+            };
+            img.src = url;
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ category.name }} - 文物色彩探索平台{% endblock %}
+
+{% block content %}
+<div class="py-5">
+    <div class="container">
+        <!-- 面包屑 -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">首页</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'artifact_list' %}">文物总目</a></li>
+                <li class="breadcrumb-item active">{{ category.name }}</li>
+            </ol>
+        </nav>
+
+        <h1 class="section-title">{{ category.name }}</h1>
+        {% if category.description %}
+        <p class="lead mb-4">{{ category.description }}</p>
+        {% endif %}
+
+        <!-- 文物列表 -->
+        {% if page_obj %}
+        <div class="row">
+            {% for artifact in page_obj %}
+            <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                <div class="card artifact-card">
+                    <a href="{% url 'artifact_detail' artifact.slug %}">
+                        {% if artifact.external_image %}
+                        <img src="{{ artifact.external_image }}" class="card-img-top" alt="{{ artifact.name }}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=&apos;http://www.w3.org/2000/svg&apos; width=&apos;640&apos; height=&apos;480&apos;><rect width=&apos;100%25&apos; height=&apos;100%25&apos; fill=&apos;%23f2f2f2&apos;/><text x=&apos;50%25&apos; y=&apos;50%25&apos; dominant-baseline=&apos;middle&apos; text-anchor=&apos;middle&apos; fill=&apos;%23999&apos; font-size=&apos;24&apos;>暂无图片</text></svg>'">
+                        {% elif artifact.image %}
+                        <img src="{{ artifact.image.url }}" class="card-img-top" alt="{{ artifact.name }}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=&apos;http://www.w3.org/2000/svg&apos; width=&apos;640&apos; height=&apos;480&apos;><rect width=&apos;100%25&apos; height=&apos;100%25&apos; fill=&apos;%23f2f2f2&apos;/><text x=&apos;50%25&apos; y=&apos;50%25&apos; dominant-baseline=&apos;middle&apos; text-anchor=&apos;middle&apos; fill=&apos;%23999&apos; font-size=&apos;24&apos;>暂无图片</text></svg>'">
+                        {% else %}
+                        <img src="data:image/svg+xml;utf8,<svg xmlns=&apos;http://www.w3.org/2000/svg&apos; width=&apos;640&apos; height=&apos;480&apos;><rect width=&apos;100%25&apos; height=&apos;100%25&apos; fill=&apos;%23f2f2f2&apos;/><text x=&apos;50%25&apos; y=&apos;50%25&apos; dominant-baseline=&apos;middle&apos; text-anchor=&apos;middle&apos; fill=&apos;%23999&apos; font-size=&apos;24&apos;>暂无图片</text></svg>" class="card-img-top" alt="{{ artifact.name }}">
+                        {% endif %}
+                    </a>
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <a href="{% url 'artifact_detail' artifact.slug %}" class="text-decoration-none text-dark">{{ artifact.name }}</a>
+                        </h5>
+                        <p class="card-text text-muted small">
+                            <i class="bi bi-clock"></i> {{ artifact.era_display }}
+                        </p>
+                        {% if artifact.color %}
+                        <p class="card-text small">
+                            <i class="bi bi-palette"></i> {{ artifact.color }}
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- 分页 -->
+        {% if page_obj.has_other_pages %}
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1">
+                        <i class="bi bi-chevron-double-left"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+
+                <li class="page-item active">
+                    <span class="page-link">{{ page_obj.number }}</span>
+                </li>
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">
+                        <i class="bi bi-chevron-double-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        <div class="text-center text-muted">
+            共 {{ page_obj.paginator.count }} 件文物，第 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 页
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-inbox display-4"></i>
+            <p>该分类下暂无文物</p>
+            <a href="{% url 'artifact_list' %}" class="btn btn-primary">
+                <i class="bi bi-grid"></i> 浏览所有文物
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
